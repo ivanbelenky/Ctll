@@ -1,0 +1,1 @@
+Clase WalkerDelta: Definicion del patron de la constelacion, capitulo 13.2 Constellation patterns ORBIT & CONSTELLATION DESIGN & MANAGEMENT James R. Wertz -> https://libgen.is/book/index.php?md5=03441DA51AECB122AE00919FE29FC6F8
