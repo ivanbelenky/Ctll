@@ -23,7 +23,7 @@ class Ctll(object):
 	):
 
 		"""Constructor.
-	
+
 		Parameters
 		----------
 		cops : list 
@@ -33,12 +33,12 @@ class Ctll(object):
 		specs : list
 			list of satellite spec objects 
 		epoch : ~astropy.time.Time, optional
-            Epoch, default to J2000.
+		    Epoch, default to J2000.
 		instrumentss : list,optional
 			list of lists of instruments, sublist for each sat
 		pattern : string 
 			Pattern Type for constellation, pattern must be in PAT
-		
+
 		"""
 		self._states = states
 		self._statuss = statuss
@@ -111,28 +111,28 @@ class Ctll(object):
 
 		Parameters
 		----------
-        T : int
-            # of total satellites in the constellation
- 		P : int
- 			# of planes
- 		F : int 
- 			Nodal phase angle between planes, must be in [0,T-1]
-        a : ~astropy.units.Quantity
-            Semi-major axis.
-        ecc : ~astropy.units.Quantity
-            Eccentricity.
-        inc : ~astropy.units.Quantity
-            Inclination
-        argp : ~astropy.units.Quantity
-            Argument of the pericenter.
+		T : int
+		    # of total satellites in the constellation
+			P : int
+				# of planes
+			F : int 
+				Nodal phase angle between planes, must be in [0,T-1]
+		a : ~astropy.units.Quantity
+		    Semi-major axis.
+		ecc : ~astropy.units.Quantity
+		    Eccentricity.
+		inc : ~astropy.units.Quantity
+		    Inclination
+		argp : ~astropy.units.Quantity
+		    Argument of the pericenter.
 		statuss : list
 			list of SAT_STATUS strings, one for each sat  
-        epoch : ~astropy.time.Time, optional
-            Epoch, default to J2000.
-        plane : ~poliastro.frames.Planes
-            Fundamental plane of the frame.
-   		
-   		raan and nu are omitted since the TPF determines them
+		epoch : ~astropy.time.Time, optional
+		    Epoch, default to J2000.
+		plane : ~poliastro.frames.Planes
+		    Fundamental plane of the frame.
+			
+			raan and nu are omitted since the TPF determines them
 
 		"""	
 		S = T/P
@@ -179,7 +179,7 @@ class Ctll(object):
 			list of tuples (rr,vv), rr and vv are Quantity 
 			objects array, size=floor(T*24*3600/dt)
 		
-		
+
 		TODO: check that list comprehension of tuples result are
 		saved as list of tupples.
 		"""
@@ -214,7 +214,6 @@ class Ctll(object):
 		v : boolean
 			verbose option to display all SATs info
 		
-		TODO: nicer way for 
 		"""
 
 		if not v:

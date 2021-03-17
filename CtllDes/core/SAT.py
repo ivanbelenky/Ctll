@@ -17,22 +17,22 @@ class Sat(object):
     ):
     	#TODO masa de satélite CD and whatnot.
 
-    	"""Constructor.
-		
-		Parameters
-        ----------
-        state : ~poliastro.twobody.states.ClassicalState
-        	State for satellite orbit
-        status : string
-        	SAT_STATUS string
-        spec : ~Ctlldes.core.Spec
-        	specifications
-        epoch : ~astropy.time.Time, optional
-            Epoch, default to J2000.
-        instruments : list
-        	List of Instrument objects
+		"""Constructor.
 
-    	"""
+		Parameters
+		----------
+		state : ~poliastro.twobody.states.ClassicalState
+			State for satellite orbit
+		status : string
+			SAT_STATUS string
+		spec : ~Ctlldes.core.Spec
+			specifications
+		epoch : ~astropy.time.Time, optional
+		    Epoch, default to J2000.
+		instruments : list
+			List of Instrument objects
+
+		"""
     	self._state = state
     	self._status = status
     	self._spec = spec
