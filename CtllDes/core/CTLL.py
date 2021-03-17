@@ -78,9 +78,9 @@ class Ctll(object):
 	
 
 	@property
-    def epoch(self):
-        """Epoch of the orbit. """
-        return self._epoch
+	def epoch(self):
+		"""Epoch of the orbit. """
+		return self._epoch
 
 
 	@classmethod
@@ -91,14 +91,14 @@ class Ctll(object):
 		F,
 		p,
 		ecc,
-        inc,
-        argp,
-        statuss,
-        epoch=J2000,
-        plane=Planes.EARTH_EQUATOR,
-        attractor=Earth,
-        instruments=None
-    ):
+		inc,
+		argp,
+		statuss,
+		epoch=J2000,
+		plane=Planes.EARTH_EQUATOR,
+		attractor=Earth,
+		instruments=None
+	):
 		"""Returns Ctll from TPF, N, and classical orbit
 		parameters.
 
@@ -113,10 +113,10 @@ class Ctll(object):
 		----------
 		T : int
 		    # of total satellites in the constellation
-			P : int
-				# of planes
-			F : int 
-				Nodal phase angle between planes, must be in [0,T-1]
+		P : int
+			# of planes
+		F : int 
+			Nodal phase angle between planes, must be in [0,T-1]
 		a : ~astropy.units.Quantity
 		    Semi-major axis.
 		ecc : ~astropy.units.Quantity
@@ -131,8 +131,10 @@ class Ctll(object):
 		    Epoch, default to J2000.
 		plane : ~poliastro.frames.Planes
 		    Fundamental plane of the frame.
-			
-			raan and nu are omitted since the TPF determines them
+		
+		Note
+		----	
+		raan and nu are omitted since the TPF determines them
 
 		"""	
 		S = T/P

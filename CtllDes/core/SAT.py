@@ -9,12 +9,12 @@ class Sat(object):
 
 	def __init__(self,
 		state,	
-        status,
-        spec,
-        epoch=J2000,
-        instruments=None,
-        
-    ):
+		status,
+		spec,
+		epoch=J2000,
+		instruments=None,
+
+	):
     	#TODO masa de satélite CD and whatnot.
 
 		"""Constructor.
@@ -33,34 +33,34 @@ class Sat(object):
 			List of Instrument objects
 
 		"""
-    	self._state = state
-    	self._status = status
-    	self._spec = spec
+		self._state = state
+		self._status = status
+		self._spec = spec
 
-    	self._epoch = epoch
+		self._epoch = epoch
 
-    	self._instruments = instruments
-
- 
-    	self._id = uuid.uuid4()
-    	self._orbit = Orbit(state,epoch)
-    	self._Propagator = Propagator(self.orbit)
-
-    @property
-    def state(self):
-    	return self._state
-    
+		self._instruments = instruments
 
 
-    @property
-    def status(self):
-    	return self._status
-   	
+		self._id = uuid.uuid4()
+		self._orbit = Orbit(state,epoch)
+		self._Propagator = Propagator(self.orbit)
 
-   	@property
-   	def instruments(self):
-   		return self._instruments
-   	
+	@property
+	def state(self):
+		return self._state
+
+
+
+	@property
+	def status(self):
+		return self._status
+		
+
+	@property
+	def instruments(self):
+		return self._instruments
+
 	@property
 	def id(self):
 		return self._id
@@ -242,7 +242,7 @@ class Propagator(object):
 		dt : float, optional
 			time interval between interpolation. 
 		method : callable, optional
-        	Propagation method, default to cowell.
+			Propagation method, default to cowell.
 
 		Returns
 		-------
