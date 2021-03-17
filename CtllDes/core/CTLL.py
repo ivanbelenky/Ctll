@@ -164,7 +164,7 @@ class Ctll(object):
 
 
 
-	def Propagate(self,T,dt=100):
+	def rv(self,T,dt=1.,**kwargs):
 		""" Propagates orbit for all Online satellites.
 
 		Parameters
@@ -177,24 +177,17 @@ class Ctll(object):
 		-------
 		propagation : list
 			list of tuples (rr,vv), rr and vv are Quantity 
-			objects array, size=T*24*3660/dt
-
-		Propagate returns list of tuples. Each tuple contains the 
-		coordinates of the   
-
-		Whenever needed outside the class the classic orbit elements can be
-		obtained using built-in poliastro.core.elements.rv2coe.
-		The propagation results are the value in km, but this
-		not being a Quantity.
-	
-		TODO: Find best way to 
-		add	perturbations.
+			objects array, size=floor(T*24*3600/dt)
+		
+		
+		TODO: check that list comprehension of tuples result are
+		saved as list of tupples.
 		"""
 
-		propagation = [sat.Propagate(T,dt) for sat in self.sats
+		rrvv = [sat.rv(T,dt) for sat in self.sats
 		if sat.status is SAT_STATUS_ONLINE]	
 		
-		return propagation
+		return rrvv
 
 	def UpdateStatus(self,newStatuss):
 		"""Updates ctll sats status."""
