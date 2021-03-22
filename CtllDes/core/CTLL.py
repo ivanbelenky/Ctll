@@ -134,7 +134,7 @@ class Ctll(object):
 		
 		Note
 		----	
-		raan and nu are omitted since the TPF determines them
+		raan and nu are omitted since TPF determines them
 
 		"""	
 		S = T/P
