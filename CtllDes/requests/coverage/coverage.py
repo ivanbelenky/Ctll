@@ -56,7 +56,8 @@ def coverages_from_CTLL(CTLL,targets,T,dt=1.):
 
 	return Coverages
 
-def isCovered(ssps,target,coverage_fun):
+def isCovered(ssps,target,CoverageMethod):
+
 
 
 class Coverage(object):
@@ -73,30 +74,6 @@ class Coverage(object):
 		else uuid.uuid4()
 
 
-
-	def merge(self):
-		"""Mergea los intervalos discretizados de tiempo de cobertura.
-		
-		Si al menos alguno de esos intervalos es cubierto, i.e == 1. Esta cubierto
-		Se podria implementar cambiando solamente una linea que tambien diga
-		cuantos satelites cubren en ese instante."""
-		if len(self.cov) <= 1:
-			return self.cov
-		elif len(self.merged) != 0:
-			return self.merged
-		else:
-			merged=[]
-			for i in range(len(self.cov[1])):
-				aux = 0
-				for j in range(1,len(self.cov)):
-					aux += (self.cov[j][i])
-				
-				merged.append(aux)
-			self.merged=merged
-			return self.merged
-
-
-
 	def acumulado(self):
 		"""Tiempo acumulado de cobertura.
 
@@ -108,8 +85,6 @@ class Coverage(object):
 			acum: tiempo acumulado de cobertura en el lapso dado."""
 
 		acum = 0
-		dt = self.dt
-		merged = self.merge()	
 				
 		for c in merged:
 			acum += c*dt

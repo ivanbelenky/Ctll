@@ -51,7 +51,6 @@ class Sat(object):
 		return self._state
 
 
-
 	@property
 	def status(self):
 		return self._status
@@ -65,6 +64,10 @@ class Sat(object):
 	def id(self):
 		return self._id
 
+	@property
+	def attractor(self):
+		return self.state.attractor
+	
 	@property
 	def m(self):
 		return self._spec.m
@@ -116,6 +119,25 @@ class Sat(object):
 			method=method,**kwargs)
 
 		return rr,vv
+
+	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
+		"""Get subsatellite points for satellite
+		
+		"""
+
+		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
+		rr,vv = self.rv(T,dt,method,**kwargs)
+		rs,lats,lons = trigsf.c2s(
+			rr[0,:].value,
+			rr[1,:].value,
+			rr[2,:].value
+		)
+
+		w = self.attractor.angular_velocity
+		lons = np.array([lon-t*w for lon in lons])
+
+		return lats,lons
+
 
 	def UpdateInstruments(self,instruments):
 
