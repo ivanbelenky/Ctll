@@ -166,30 +166,52 @@ class Ctll(object):
 
 
 
-	def rv(self,T,dt=1.,**kwargs):
-		""" Propagates orbit for all Online satellites.
+	def rv(self,T,dt=1.,method=propagation.cowell,**kwargs):
+		""" Propagates orbit for online satellites,
+		T days of flight.
 
 		Parameters
 		----------
 		T : int
-			Time desired for propagation
+			Desired time of propagation in days
 		dt : float
 			Size of intervals in seconds
+		
 		Returns
 		-------
-		propagation : list
+		rrvv : list
 			list of tuples (rr,vv), rr and vv are Quantity 
 			objects array, size=floor(T*24*3600/dt)
 		
-
-		TODO: check that list comprehension of tuples result are
-		saved as list of tupples.
 		"""
 
-		rrvv = [sat.rv(T,dt) for sat in self.sats
+		rrvv = [sat.rv(T,dt,method,**kwargs) for sat in self.sats
+		if sat.status is SAT_STATUS_ONLINE]	
+		return rrvv
+
+	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
+		""" Get subsatellite points for online Satellites,
+		T days of flight.
+
+		Parameters
+		----------
+		T : float
+			Desired time of propagation in days
+		dt : float
+			Size of intervals in seconds
+		
+		Returns
+		-------
+		sspss : list
+			list of tuples (lat,long), lat and lon are Quantity 
+			objects array, size = floor(T*24*3600/dt)
+		
+		"""
+
+		sspss = [sat.ssps(T,dt,method,**kwargs) for sat in self.sats
 		if sat.status is SAT_STATUS_ONLINE]	
 		
-		return rrvv
+		return sspss
 
 	def UpdateStatus(self,newStatuss):
 		"""Updates ctll sats status."""
@@ -214,7 +236,7 @@ class Ctll(object):
 		Parameters
 		----------
 		v : boolean
-			verbose option to display all SATs info
+			verbose option, display all SATs info
 		
 		"""
 

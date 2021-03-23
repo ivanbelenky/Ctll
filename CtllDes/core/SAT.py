@@ -111,17 +111,42 @@ class Sat(object):
 
 
 	def rv(self,T,dt=1.,method=propagation.cowell,**kwargs):
-	"""Propagates orbit specified amount of days.
-	
-
-	"""
+		""" Propagates orbit, T days of flight.
+		
+		Parameters
+		----------
+		T : int
+			Desired time of propagation in days
+		dt : float
+			Size of intervals in seconds
+		
+		Returns
+		-------
+		rrvv : list
+			list of tuples (rr,vv), rr and vv are Quantity 
+			objects array, size=floor(T*24*3600/dt)
+		
+		"""
 		rr,vv = self.Propagator.get_rv(self.orbit,T,dt,
 			method=method,**kwargs)
 
 		return rr,vv
 
 	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
-		"""Get subsatellite points for satellite
+		""" Get subsatellite points, T days of flight.
+
+		Parameters
+		----------
+		T : int
+			Desired time of propagation
+		dt : float
+			Size of intervals in seconds
+		
+		Returns
+		-------
+		sspss : list
+			list of tuples (lat,long), lat and lon are Quantity 
+			objects array, size = floor(T*24*3600/dt)
 		
 		"""
 
@@ -134,7 +159,8 @@ class Sat(object):
 		)
 
 		w = self.attractor.angular_velocity
-		lons = np.array([lon-t*w for lon in lons])
+		lons = np.array([lon-t*w for lon in lons])*u.rad
+		lats = lats*u.rad
 
 		return lats,lons
 
@@ -152,7 +178,7 @@ class Sat(object):
 			SAT_STATUS string
 		"""
 
-		self.status=newStatus
+		self.status = newStatus
 
 
 	def Info(self):
