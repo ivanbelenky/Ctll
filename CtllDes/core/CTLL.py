@@ -1,12 +1,22 @@
 from poliastro.bodies import Earth, Mars, Sun
 from poliastro.twobody import Orbit, propagation, states
-from states import ClassicalState as CS 
+from poliastro.twobody.states import ClassicalState as CS 
+from poliastro.constants import J2000
+from poliastro.frames import Planes
+from astropy.time import Time, TimeDelta
+
 
 import numpy as np
 from astropy import time, units as u
 
-from .SAT import Sat 
 
+from .SAT import Sat, SAT_ST 
+from .specs import DefaultSpec
+
+try:
+    from functools import cached_property  # type: ignore
+except ImportError:
+    from cached_property import cached_property  # type: ignore
 
 
 
@@ -15,9 +25,9 @@ class Ctll(object):
 	def __init__(
 		self,
 		states,
-		statuss,
-		specs,
-		epoch=J200,
+		statuss=None,
+		specs=None,
+		epoch=J2000,
 		instrumentss=None,
 		pattern=None,		
 	):
@@ -28,9 +38,11 @@ class Ctll(object):
 		----------
 		cops : list 
 			list of dictionaries with clasiccal orbit parameters
-		statuss : list
+		states : list
+			list of ~poliastro.twobody.states.BaseState childs
+		statuss : list, optional
 			list of SAT_STATUS strings, one for each sat 
-		specs : list
+		specs : list, optional
 			list of satellite spec objects 
 		epoch : ~astropy.time.Time, optional
 		    Epoch, default to J2000.
@@ -41,23 +53,98 @@ class Ctll(object):
 
 		"""
 		self._states = states
-		self._statuss = statuss
-		
+		self.statuss = statuss if statuss else []
+		self.specs = specs if specs else []
+
 		self._epoch = epoch
 
-		self._instrumentss = instrumentss
+		self.instrumentss = instrumentss if instrumentss else []
 
-		self._pattern = [(pattern, self.N)] if pattern
+		self._pattern = [(pattern, self.N)] if pattern \
 		else [(PAT['NP'], self.N)]
 
 
 		self._sats = self._set_sats()
 
 
+	@property
+	def states(self):
+		return self._states
+	
+	@states.setter
+	def states(self,statess):
+		if not isinstance(statess,list):
+			raise Exception("States must be a list")  
+		elif len(statess) == 0:
+			raise Exception("No state provided")
+		self._statess = statess
 
 	@property
 	def statuss(self):
 		return self._statuss
+
+	
+	#TODO: implement warning control, check if this lists are valid
+	#this is just a patch to initialize without giving instruments and sepcs
+	#lists. Maybe a way is to incorporate in the Instruments module and the specs
+	#and status one, a generator for N satellites with one state.
+
+	@statuss.setter
+	def statuss(self,arg):
+		N_statuss = len(arg)
+		if not isinstance(arg,list):
+			raise Exception("Satellite status must be a list")
+		elif N_statuss < self.N and N_statuss != 0:
+			arg.append([SAT_ST["Online"] for _ in range(self.N-N_statuss)])
+			print("Not enought status, for remainining status ONLINE was used")
+			self._statuss = arg
+		elif N_statuss > self.N:
+			print("Too many status, list has been sliced")
+			self._statuss = arg[:self.N] 
+		elif N_statuss == 0:
+			self._statuss = [SAT_ST["Online"] for _ in range(self.N)]
+		else:
+			self._statuss = arg
+
+	@property
+	def specs(self):
+		return self._specs
+	
+	@specs.setter
+	def specs(self,specs):
+		N_specs = len(specs)
+		if not isinstance(specs,list):
+			raise Exception("Satellite specifications must be a list")
+		elif N_specs < self.N and N_specs > 0:
+			specs.append([DefaultSpec for _ in range(self.N-N_specs)])
+			print("Not enought specifications, for remainining specs.default was used")
+			self._specs = specs
+		elif N_specs > self.N:
+			print("Too many specifications, list has been sliced")
+			self._specs = specs[:self.N] 
+		elif N_specs == 0:
+			self._specs = [DefaultSpec for _ in range(self.N)]
+		else:
+			self._specs = specs
+
+	@property
+	def instrumentss(self):
+		return self._instrumentss
+	
+	@instrumentss.setter
+	def instrumentss(self,instrumentss):
+		N_instr = len(instrumentss) 
+		print(N_instr)
+		if not isinstance(instrumentss,list):
+			raise Exception("Satellites instruments must be a list")
+		elif N_instr == 0:
+			self._instrumentss = [ [] for _ in range(self.N)] 
+		elif N_instr < self.N:
+			print("Not enoough instruments")
+			instrumentss.append([[] for _ in range(self.N-N_instr)]) 
+		elif N_instr > self.N:
+			print("Too many instruments")
+			self._instrumentss = instrumentss[:self.N]
 
 	@property
 	def sats(self):
@@ -67,10 +154,10 @@ class Ctll(object):
 	def SatsId(self):
 		return [sat.id for sat in self.sats]
 	
-	@property
+	@cached_property
 	def N(self):
 		"""Number of sats in the constellation """
-		return len(self._states)
+		return len(self.states)
 
 	@property
 	def pattern(self):
@@ -145,7 +232,7 @@ class Ctll(object):
 		for j in range(T)
 		]
 
-		states = [CS(attractor,p,ecc,raans[j],argp,nus[j],plane) 
+		states = [CS(attractor,p,ecc,inc,raans[j],argp,nus[j],plane) 
 		for j in range(T)]
 		
 
@@ -162,7 +249,7 @@ class Ctll(object):
 		"""Returns sats attribute: list of sats"""
 
 		return [Sat(st,instr,status) for st,instr,status
-		 in zip(states,instrumentss,statuss)]
+		 in zip(self.states,self.instrumentss,self.statuss)]
 
 
 
@@ -186,7 +273,7 @@ class Ctll(object):
 		"""
 
 		rrvv = [sat.rv(T,dt,method,**kwargs) for sat in self.sats
-		if sat.status is SAT_STATUS_ONLINE]	
+		if sat.status is SAT_ST["Online"]]	
 		return rrvv
 
 	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
@@ -209,7 +296,7 @@ class Ctll(object):
 		"""
 
 		sspss = [sat.ssps(T,dt,method,**kwargs) for sat in self.sats
-		if sat.status is SAT_STATUS_ONLINE]	
+		if sat.status is SAT_ST["Online"]]	
 		
 		return sspss
 
@@ -226,7 +313,7 @@ class Ctll(object):
 		Online
 		"""
 		return [sat.id for sat in self.sats 
-		if sat.status is SAT_STATUS_ONLINE]
+		if sat.status is SAT_ST["Online"]]
 
 
 
@@ -244,19 +331,20 @@ class Ctll(object):
 			for patt in self.pattern:
 				print(f"{patt[1]} satellites within {patt[0]}")
 
-		for j in range(len(self.pattern)):	
-			print(f"{self.pattern[j][1]} satellites in"+
-				f"{self.pattern[j][0]}\n")
-			for i in range(patt[1]):
-				self.sats[j+i].Info()
+		else:
+			offset = 0 
+			for j in range(len(self.pattern)):	
+				print(f"{self.pattern[j][1]} satellites in"+
+					f"{self.pattern[j][0]}\n")
+				offset += self.pattern[j][1]
+				for i in range(self.pattern[j][1]):
+					self.sats[offset+i].Info()
 
 
 
 
 
-SAT_STATUS_ONLINE = 'Status:Online'
-SAT_STATUS_OFFLINE = 'Status:Offline'
-PAT={
+PAT = {
 	'NP':'no Pattern',
 	'WD':'Walker Delta Pattern'
-	}
+}

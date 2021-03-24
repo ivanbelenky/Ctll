@@ -1,7 +1,24 @@
 from poliastro.bodies import Earth
-from poliastro.twobody import Orbit, propagation
+from poliastro.twobody import Orbit, propagation,states
+from poliastro.constants import J2000
+from poliastro.frames import Planes
+
+from astropy.time import Time, TimeDelta
+from astropy import time, units as u
+
+
+from . import CTLL
+from .specs import DefaultSpec
 
 import uuid
+import numpy as np
+
+
+SAT_ST = {
+	"Online":'Status:Online',
+	"Offline":'Status:Offline'
+}
+
 
 PROPAGATOR_DT = 100
 
@@ -9,13 +26,11 @@ class Sat(object):
 
 	def __init__(self,
 		state,	
-		status,
-		spec,
+		status = SAT_ST['Online'],
+		spec = DefaultSpec,
 		epoch=J2000,
-		instruments=None,
-
+		instruments=None
 	):
-    	#TODO masa de satélite CD and whatnot.
 
 		"""Constructor.
 
@@ -25,7 +40,7 @@ class Sat(object):
 			State for satellite orbit
 		status : string
 			SAT_STATUS string
-		spec : ~Ctlldes.core.Spec
+		spec : ~Ctlldes.core.spec
 			specifications
 		epoch : ~astropy.time.Time, optional
 		    Epoch, default to J2000.
@@ -39,7 +54,12 @@ class Sat(object):
 
 		self._epoch = epoch
 
-		self._instruments = instruments
+		if not instruments:
+			self._instruments = []
+		elif not isinstance(isntrumentss,list):
+			self._instruments = [instruments]
+		else:
+			self._instruments = instruments
 
 
 		self._id = uuid.uuid4()
@@ -50,15 +70,45 @@ class Sat(object):
 	def state(self):
 		return self._state
 
-
+	@state.setter
+	def state(self,state):
+		if not isinstance(state,sates.BaseState):
+			raise Exception("Invalid state")
+		else:
+			self._state = state
 	@property
 	def status(self):
 		return self._status
-		
+	
+	@status.setter
+	def status(self,status):
+		if status not in SAT_ST:
+			print("Warning")
+			self._status = SAT_ST["Online"]
+		else:
+			self._status = status
+	
+	@property
+	def spec(self):
+		return self._spec
+	
+	@spec.setter
+	def spec(self,spec):
+		#TODO implmeent specifications class
+		# if not isintance(spec,Specifications):
+		# 	raise Exception("Invalid satellite specifications")
+		self._spec = spec
 
 	@property
-	def instruments(self):
-		return self._instruments
+	def instrument(self):
+		return self._isntruments
+
+	@instrument.setter
+	def instrument(self,instrument):
+		for instr in instruments:
+			if not isinstance(instr, Instrument):
+				raise Exception(f"{type(instr)} is not an Instrument object")
+		self._instruments = instruments
 
 	@property
 	def id(self):
@@ -198,11 +248,13 @@ class Propagator(object):
 		self,
 		orbit,
 	 	T = 1,
-	 	method=propagation.cowell,	   
+	 	method = propagation.cowell,	   
 		**kwargs
 	):
 		
 		"""Propagator object builder. Build coordinates"""
+		self._propagatorDT = PROPAGATOR_DT 
+
 
 		self._orbit = orbit 
 		self._T = T 
@@ -215,7 +267,6 @@ class Propagator(object):
 		
 
 		#hardsetted to optimize performance on interpolation
-		self._propagatorDT = PROPAGATOR_DT 
 
 
 
@@ -240,6 +291,12 @@ class Propagator(object):
 		if T <= 0: raise Exception("T must be positive and != 0")
 		self._T = T
 	
+	@property
+	def kwargs(self):
+		return self._kwargs
+	
+
+
 	@property
 	def method(self):
 		return self._method
@@ -281,7 +338,7 @@ class Propagator(object):
 		self.tofs = TimeDelta(np.linspace(0,self.T*24*3600*u.s,
 		 num=int(self.T*24*3600/self._propagatorDT)))
 		
-		self.coords = propagation.propagate(self.orbit,
+		return propagation.propagate(self.orbit,
 			self.tofs,method=self.method,**self.kwargs)
 
 
@@ -347,6 +404,4 @@ class Propagator(object):
 		
 		return ephemerides.rv(tofs)
 	
-
-
 
