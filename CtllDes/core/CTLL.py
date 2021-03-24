@@ -27,9 +27,9 @@ class Ctll(object):
 		states,
 		statuss=None,
 		specs=None,
-		epoch=J2000,
 		instrumentss=None,
-		pattern=None,		
+		pattern=None,
+		epoch=J2000,		
 	):
 
 		"""Constructor.
@@ -95,14 +95,14 @@ class Ctll(object):
 		if not isinstance(arg,list):
 			raise Exception("Satellite status must be a list")
 		elif N_statuss < self.N and N_statuss != 0:
-			arg.append([SAT_ST["Online"] for _ in range(self.N-N_statuss)])
+			arg.append([SAT_ST["On"] for _ in range(self.N-N_statuss)])
 			print("Not enought status, for remainining status ONLINE was used")
 			self._statuss = arg
 		elif N_statuss > self.N:
 			print("Too many status, list has been sliced")
 			self._statuss = arg[:self.N] 
 		elif N_statuss == 0:
-			self._statuss = [SAT_ST["Online"] for _ in range(self.N)]
+			self._statuss = [SAT_ST["On"] for _ in range(self.N)]
 		else:
 			self._statuss = arg
 
@@ -180,11 +180,13 @@ class Ctll(object):
 		ecc,
 		inc,
 		argp,
-		statuss,
+		statuss=None,
+		specs=None,
+		instrumentss=None,
 		epoch=J2000,
 		plane=Planes.EARTH_EQUATOR,
-		attractor=Earth,
-		instruments=None
+		attractor=Earth
+
 	):
 		"""Returns Ctll from TPF, N, and classical orbit
 		parameters.
@@ -239,17 +241,18 @@ class Ctll(object):
 		return cls(
 			states,
 			statuss,
-			instrumentss,
-			epoch,
+			specs,
+			instrumentss,		
 			pattern=PAT['WD']+f' T/P/F = {T}/{P}/{F}',
+			epoch=epoch
 		)
 
 
 	def _set_sats(self):
 		"""Returns sats attribute: list of sats"""
 
-		return [Sat(st,instr,status) for st,instr,status
-		 in zip(self.states,self.instrumentss,self.statuss)]
+		return [Sat(st,status,spec,instr) for st,status,spec,instr
+		 in zip(self.states,self.statuss,self.specs,self.instrumentss)]
 
 
 
@@ -273,7 +276,7 @@ class Ctll(object):
 		"""
 
 		rrvv = [sat.rv(T,dt,method,**kwargs) for sat in self.sats
-		if sat.status is SAT_ST["Online"]]	
+		if sat.status is SAT_ST["On"]]	
 		return rrvv
 
 	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
@@ -296,7 +299,7 @@ class Ctll(object):
 		"""
 
 		sspss = [sat.ssps(T,dt,method,**kwargs) for sat in self.sats
-		if sat.status is SAT_ST["Online"]]	
+		if sat.status is SAT_ST["On"]]	
 		
 		return sspss
 
@@ -313,7 +316,7 @@ class Ctll(object):
 		Online
 		"""
 		return [sat.id for sat in self.sats 
-		if sat.status is SAT_ST["Online"]]
+		if sat.status is SAT_ST["On"]]
 
 
 
@@ -329,17 +332,17 @@ class Ctll(object):
 
 		if not v:
 			for patt in self.pattern:
-				print(f"{patt[1]} satellites within {patt[0]}")
+				print(f"\n{patt[1]} satellites within {patt[0]}")
 
 		else:
 			offset = 0 
 			for j in range(len(self.pattern)):	
-				print(f"{self.pattern[j][1]} satellites in"+
+				print(f"\n{self.pattern[j][1]} satellites in "+
 					f"{self.pattern[j][0]}\n")
-				offset += self.pattern[j][1]
 				for i in range(self.pattern[j][1]):
 					self.sats[offset+i].Info()
-
+				offset += self.pattern[j][1]
+				
 
 
 

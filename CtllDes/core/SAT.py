@@ -15,8 +15,8 @@ import numpy as np
 
 
 SAT_ST = {
-	"Online":'Status:Online',
-	"Offline":'Status:Offline'
+	"On":'Online',
+	"Off":'Offline'
 }
 
 
@@ -26,10 +26,10 @@ class Sat(object):
 
 	def __init__(self,
 		state,	
-		status = SAT_ST['Online'],
+		status = SAT_ST["On"],
 		spec = DefaultSpec,
-		epoch=J2000,
-		instruments=None
+		instruments=None,
+		epoch=J2000
 	):
 
 		"""Constructor.
@@ -84,7 +84,7 @@ class Sat(object):
 	def status(self,status):
 		if status not in SAT_ST:
 			print("Warning")
-			self._status = SAT_ST["Online"]
+			self._status = SAT_ST["On"]
 		else:
 			self._status = status
 	
@@ -232,10 +232,10 @@ class Sat(object):
 
 
 	def Info(self):
-		print(f"id:{self.id}\t[a ecc inc raan argp nu ]:"+
-			f"[ {self.a} {self.ecc} {self.inc}"+
-			f" {self.raan} {self.argp} {self.nu}]"+
-			f"\tstatus:{self.status}")
+		print(f"id : {self.id}\t[a ecc inc raan argp nu] : "+
+			f"[{self.orbit.a:.3f} {self.orbit.ecc:.3f} {self.orbit.inc:.3f}"+
+			f" {self.orbit.raan:.3f} {self.orbit.argp:.3f} {self.orbit.nu:.3f}]"+
+			f"\t\tstatus : {self.status}")
 		 
 
 

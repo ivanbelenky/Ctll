@@ -27,9 +27,12 @@ state = [states.ClassicalState(Earth,p,ecc,inc,raan,argp,nu,plane)]
 
 
 
-def test_empty_constellation_constructor():
+def test_one_satellite_ctll_without_specs():
 	ctll = CTLL.Ctll(state)
+	print("this are the constellation intrumentss",ctll.instrumentss)
+	print("this are the constellation specs",ctll.specs)
+	print("this are the constellation patterns",ctll.pattern)
+	print("this is the constellation status",ctll.statuss)
+	ctll.Info(v=True)
 
-	print("this are the specs:",ctll.specs)
-
-	# ctll.Info(v=True)
+def test_
