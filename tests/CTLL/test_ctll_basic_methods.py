@@ -12,7 +12,7 @@ from poliastro.frames import Planes
 import numpy as np
 
 import CtllDes 
-from CtllDes.core import CTLL, SAT
+from CtllDes.core import ctll, satellite
 
 
 p = 35000 * u.km
@@ -28,30 +28,30 @@ pi = np.pi
 
 
 
-def test_one_satellite_ctll_without_specs_instruments_status():
+def test_one_satellite_constellation_without_specs_instruments_status():
 	
 	state = [st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu,plane)]
-	ctll = CTLL.Ctll(state)
+	constellation = ctll.Ctll(state)
 
-	print("this are the constellation intrumentss",ctll.instrumentss)
-	print("this are the constellation specs",ctll.specs)
-	print("this are the constellation patterns",ctll.pattern)
-	print("this is the constellation status",ctll.statuss)
-	print("Online satellite are",ctll.getOnlineSatsId())
+	print("this are the constellation intrumentss",constellation.instrumentss)
+	print("this are the constellation specs",constellation.specs)
+	print("this are the constellation patterns",constellation.pattern)
+	print("this is the constellation status",constellation.statuss)
+	print("Online satellite are",constellation.getOnlineSatsId())
 	
-	ctll.Info(v=True)
+	constellation.Info(v=True)
 
-def test_one_satellite_ctll_with_status_without_specs_instruments():
+def test_one_satellite_constellation_with_status_without_specs_instruments():
 	state = [st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu,plane)]
-	ctll = CTLL.Ctll(state)
+	constellation = ctll.Ctll(state)
 	
-	print("this are the constellation intrumentss",ctll.instrumentss)
-	print("this are the constellation specs",ctll.specs)
-	print("this are the constellation patterns",ctll.pattern)
-	print("this is the constellation status",ctll.statuss)
-	print("Online satellite are",ctll.getOnlineSatsId())
+	print("this are the constellation intrumentss",constellation.instrumentss)
+	print("this are the constellation specs",constellation.specs)
+	print("this are the constellation patterns",constellation.pattern)
+	print("this is the constellation status",constellation.statuss)
+	print("Online satellite are",constellation.getOnlineSatsId())
 	
-	ctll.Info(v=True)
+	constellation.Info(v=True)
 
 def test_arbitrary_satellite_without_specs_isntruments_status():
 
@@ -60,29 +60,103 @@ def test_arbitrary_satellite_without_specs_isntruments_status():
 	for i in range(1,N):
 		states.append(st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu+2*pi/i*u.rad,plane))
 	
-	ctll = CTLL.Ctll(states)
+	constellation = ctll.Ctll(states)
 
-	print("this are the constellation intrumentss",ctll.instrumentss)
-	print("this are the constellation specs",ctll.specs)
-	print("this are the constellation patterns",ctll.pattern)
-	print("this is the constellation status",ctll.statuss)
-	print("Online satellite are",ctll.getOnlineSatsId())
+	print("this are the constellation intrumentss",constellation.instrumentss)
+	print("this are the constellation specs",constellation.specs)
+	print("this are the constellation patterns",constellation.pattern)
+	print("this is the constellation status",constellation.statuss)
+	print("Online satellite are",constellation.getOnlineSatsId())
 	
-	ctll.Info(v=True)
+	constellation.Info(v=True)
 
-def test_ctll_class_method_from_Walker_Delta_without_instruments_specs_status():
+def test_constellation_class_method_from_Walker_Delta_without_instruments_specs_status():
 	T = 10
 	P = 5
 	F = 0
 
-	ctll = CTLL.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
+	constellation = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
 
-	print("this are the constellation intrumentss",ctll.instrumentss)
-	print("this are the constellation specs",ctll.specs)
-	print("this are the constellation patterns",ctll.pattern)
-	print("this is the constellation status",ctll.statuss)
-	print("Online satellite are",ctll.getOnlineSatsId())
+	print("this are the constellation intrumentss",constellation.instrumentss)
+	print("this are the constellation specs",constellation.specs)
+	print("this are the constellation patterns",constellation.pattern)
+	print("this is the constellation status",constellation.statuss)
+	print("Online satellite are",constellation.getOnlineSatsId())
 	
-	ctll.Info(v=True)
+	constellation.Info(v=True)
+
+
+def test_constellation_creating_constellation_adding_satellites():
+	T = 8
+	P = 2
+	F = 3
+
+	constellation = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
+
+	new_p = p - 10000 * u.km
+
+	new_state = [st.ClassicalState(Earth,new_p,ecc,inc,raan,argp,nu,plane)]
+	new_sat = satellite.Sat(new_state)
+
+	constellation.addSat(new_sat)
+
+	ids = constellation.getOnlineSatsId() 
+	sat_id = ids[-1]
+	sat = getSat(sat_id)
+
+	sat.Info()
+
+
+def test_constellation_adding():
+	states = []
+	N = 6
+	for i in range(1,N):
+		states.append(st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu+2*pi/i*u.rad,plane))
+	
+	constellation1 = ctll.Ctll(states)
+	
+	T = 8
+	P = 2
+	F = 3
+	p2 = p - 5000 * u.km
+	constellation2 = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
+	 
+	constellation = constellation1 + constellation2 
+
+
+
+def test_adding_constellation_and_individual_satellites():
+
+	#constellation1
+	states = []
+	N = 6
+	for i in range(1,N):
+		states.append(st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu+2*pi/i*u.rad,plane))	
+	constellation1 = ctll.Ctll(states)
+	
+	#constellation2
+	T = 8
+	P = 2
+	F = 3
+	p2 = p - 5000 * u.km
+	constellation2 = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
+	 
+	#individual new satellite
+	new_p = p - 10000 * u.km
+	new_state = [st.ClassicalState(Earth,new_p,ecc,inc,raan,argp,nu,plane)]
+	new_sat = satellite.Sat(new_state)
+
+	constellation = constellation1 + constellation2 + sat
+
+	print("this are the constellation intrumentss",constellation.instrumentss)
+	print("this are the constellation specs",constellation.specs)
+	print("this are the constellation patterns",constellation.pattern)
+	print("this is the constellation status",constellation.statuss)
+	print("Online satellite are",constellation.getOnlineSatsId())
+	
+	constellation.Info(v=True)
+
+
+
 
 

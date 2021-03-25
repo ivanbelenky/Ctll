@@ -7,8 +7,8 @@ from astropy.time import Time, TimeDelta
 from astropy import time, units as u
 
 
-from . import CTLL
-from .specs import DefaultSpec
+from . import ctll
+from .specs import Specifications
 
 import uuid
 import numpy as np
@@ -27,7 +27,7 @@ class Sat(object):
 	def __init__(self,
 		state,	
 		status = SAT_ST["On"],
-		spec = DefaultSpec,
+		spec = None,
 		instruments=None,
 		epoch=J2000
 	):
@@ -48,9 +48,9 @@ class Sat(object):
 			List of Instrument objects
 
 		"""
-		self._state = state
-		self._status = status
-		self._spec = spec
+		self.state = state
+		self.status = status
+		self.spec = spec if spec else Specifications()
 
 		self._epoch = epoch
 
@@ -72,7 +72,7 @@ class Sat(object):
 
 	@state.setter
 	def state(self,state):
-		if not isinstance(state,sates.BaseState):
+		if not isinstance(state,states.BaseState):
 			raise Exception("Invalid state")
 		else:
 			self._state = state
@@ -82,7 +82,7 @@ class Sat(object):
 	
 	@status.setter
 	def status(self,status):
-		if status not in SAT_ST:
+		if status not in SAT_ST.values():
 			print("Warning")
 			self._status = SAT_ST["On"]
 		else:
@@ -95,8 +95,8 @@ class Sat(object):
 	@spec.setter
 	def spec(self,spec):
 		#TODO implmeent specifications class
-		# if not isintance(spec,Specifications):
-		# 	raise Exception("Invalid satellite specifications")
+		if not isinstance(spec,Specifications):
+			raise Exception("Invalid satellite specifications")
 		self._spec = spec
 
 	@property
@@ -233,8 +233,8 @@ class Sat(object):
 
 	def Info(self):
 		print(f"id : {self.id}\t[a ecc inc raan argp nu] : "+
-			f"[{self.orbit.a:.3f} {self.orbit.ecc:.3f} {self.orbit.inc:.3f}"+
-			f" {self.orbit.raan:.3f} {self.orbit.argp:.3f} {self.orbit.nu:.3f}]"+
+			f"[{self.orbit.a:.1f} {self.orbit.ecc:.1f} {self.orbit.inc:.1f}"+
+			f" {self.orbit.raan:.1f} {self.orbit.argp:.1f} {self.orbit.nu:.1f}]"+
 			f"\t\tstatus : {self.status}")
 		 
 

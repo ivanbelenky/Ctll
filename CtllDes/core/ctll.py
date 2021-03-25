@@ -10,8 +10,8 @@ import numpy as np
 from astropy import time, units as u
 
 
-from .SAT import Sat, SAT_ST 
-from .specs import DefaultSpec
+from .satellite import Sat, SAT_ST 
+from .specs import Specifications
 
 try:
     from functools import cached_property  # type: ignore
@@ -37,7 +37,7 @@ class Ctll(object):
 		Parameters
 		----------
 		cops : list 
-			list of dictionaries with clasiccal orbit parameters
+			list of poliastro.twobody.states BaseState objects childs
 		states : list
 			list of ~poliastro.twobody.states.BaseState childs
 		statuss : list, optional
@@ -91,10 +91,12 @@ class Ctll(object):
 
 	@statuss.setter
 	def statuss(self,arg):
-		N_statuss = len(arg)
 		if not isinstance(arg,list):
 			raise Exception("Satellite status must be a list")
-		elif N_statuss < self.N and N_statuss != 0:
+		
+		N_statuss = len(arg)
+
+		if N_statuss < self.N and N_statuss != 0:
 			arg.append([SAT_ST["On"] for _ in range(self.N-N_statuss)])
 			print("Not enought status, for remainining status ONLINE was used")
 			self._statuss = arg
@@ -112,18 +114,20 @@ class Ctll(object):
 	
 	@specs.setter
 	def specs(self,specs):
-		N_specs = len(specs)
 		if not isinstance(specs,list):
 			raise Exception("Satellite specifications must be a list")
-		elif N_specs < self.N and N_specs > 0:
-			specs.append([DefaultSpec for _ in range(self.N-N_specs)])
+		
+		N_specs = len(specs)
+
+		if N_specs < self.N and N_specs > 0:
+			specs.append([Specifications() for _ in range(self.N-N_specs)])
 			print("Not enought specifications, for remainining specs.default was used")
 			self._specs = specs
 		elif N_specs > self.N:
 			print("Too many specifications, list has been sliced")
 			self._specs = specs[:self.N] 
 		elif N_specs == 0:
-			self._specs = [DefaultSpec for _ in range(self.N)]
+			self._specs = [Specifications() for _ in range(self.N)]
 		else:
 			self._specs = specs
 
@@ -133,11 +137,12 @@ class Ctll(object):
 	
 	@instrumentss.setter
 	def instrumentss(self,instrumentss):
-		N_instr = len(instrumentss) 
-		print(N_instr)
 		if not isinstance(instrumentss,list):
 			raise Exception("Satellites instruments must be a list")
-		elif N_instr == 0:
+		
+		N_instr = len(instrumentss) 
+		
+		if N_instr == 0:
 			self._instrumentss = [ [] for _ in range(self.N)] 
 		elif N_instr < self.N:
 			print("Not enoough instruments")
@@ -180,6 +185,7 @@ class Ctll(object):
 		ecc,
 		inc,
 		argp,
+		raans_offset = 0,
 		statuss=None,
 		specs=None,
 		instrumentss=None,
@@ -228,7 +234,7 @@ class Ctll(object):
 		"""	
 		S = T/P
 		
-		raans = [int(j/S)*360*u.deg/P for j in range(T)]
+		raans = [raans_offset+int(j/S)*360*u.deg/P for j in range(T)]
 		
 		nus = [(j%S)*360*u.deg/S+int(j/S)*360*u.deg*F/T 
 		for j in range(T)
@@ -303,21 +309,78 @@ class Ctll(object):
 		
 		return sspss
 
-	def UpdateStatus(self,newStatuss):
-		"""Updates ctll sats status."""
 
-		self.statuss = newStatuss
+	def getSat(self,uuid):
+		"""Get satellite by uuid
+		
+		Parameters
+		----------
+		uuid : UUID
+			id of desired satellite
+
+		"""
+
+		for sat in self.sats:
+			if sat.id == uuid:
+				return sat
+		raise Exception("Satellite not found")
+
+
+	def UpdateStatus(self,newStatuss):
+		"""Updates ctll sats status.
+		
+		Parameters
+		----------
+		newStatuss : list
+			list of CtllDes.SAT.SAT_ST values
+		"""
+		
+		self.statuss = newStatuss 
 		for sat,status in zip(self.sats,newStatuss):
 			sat.UpdateStatus(status)
 
+	def UpdateSpecs(self,newSpecs):
+		"""Updates ctll sats specifications.
+		
+		Parameters
+		----------
+		newSpecs : list
+			list of CtllDes.core.specs.Specifications 
+		"""
+		
+		self.statuss = newSpecs 
+		for sat,spec in zip(self.sats,newSpecs):
+			sat.UpdateSpec(spec)
+
+	def UpdateInstruments(self,newInstr):
+		"""Updates ctll sats Instruments.
+		
+		Parameters
+		----------
+		newInstr : list
+			list of CtllDes.core.instrument.Instrument
+		"""
+		
+		self.instrumentss = newInstr 
+		for sat,instr in zip(self.sats,newInstr):
+			sat.UpdateInstruments(instr)
+
+
+	def getSatsId(self):
+		"""Returns satellites ids list in order."""
+		return [sat.id for sat in self.sats]
 
 	def getOnlineSatsId(self):
-		"""Returns online sats ids list in order of satellites
-		Online
+		"""Returns online satellites ids list in order.
 		"""
 		return [sat.id for sat in self.sats 
 		if sat.status is SAT_ST["On"]]
 
+	def getOfflineSatsId(self):
+		"""Returns offline satellites ids list in order.
+		"""
+		return [sat.id for sat in self.sats 
+		if sat.status is SAT_ST["Off"]]
 
 
 	def Info(self,v=False):
@@ -343,6 +406,7 @@ class Ctll(object):
 					self.sats[offset+i].Info()
 				offset += self.pattern[j][1]
 				
+
 
 
 
