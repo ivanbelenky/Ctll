@@ -55,14 +55,11 @@ class Ctll(object):
 		self._states = states
 		self.statuss = statuss if statuss else []
 		self.specs = specs if specs else []
+		self.instrumentss = instrumentss if instrumentss else []
+		self._pattern = pattern if pattern \
+		else [{"PAT":PAT['NP'], "N":self.N}]
 
 		self._epoch = epoch
-
-		self.instrumentss = instrumentss if instrumentss else []
-
-		self._pattern = [(pattern, self.N)] if pattern \
-		else [(PAT['NP'], self.N)]
-
 
 		self._sats = self._set_sats()
 
@@ -109,7 +106,7 @@ class Ctll(object):
 			self._statuss = arg
 
 	@property
-	def specs(self):
+	def specs(self):	
 		return self._specs
 	
 	@specs.setter
@@ -145,24 +142,38 @@ class Ctll(object):
 		if N_instr == 0:
 			self._instrumentss = [ [] for _ in range(self.N)] 
 		elif N_instr < self.N:
-			print("Not enoough instruments")
-			instrumentss.append([[] for _ in range(self.N-N_instr)]) 
+			print("Not enough instruments")
+			instrumentss.append([[] for _ in range(self.N-N_instr)])
+			self._instrumentss = instrumentss 
 		elif N_instr > self.N:
 			print("Too many instruments")
 			self._instrumentss = instrumentss[:self.N]
+		else:
+			self._instrumentss = instrumentss
 
 	@property
 	def sats(self):
 		return self._sats
-	
-	@property
-	def SatsId(self):
-		return [sat.id for sat in self.sats]
-	
+
 	@cached_property
 	def N(self):
 		"""Number of sats in the constellation """
 		return len(self.states)
+
+	@property
+	def sats_id(self):
+		return [sat.id for sat in self.sats]
+	
+	@property
+	def online_id(self):
+		return [sat.id for sat in self.sats 
+		if sat.status is SAT_ST["On"]]
+	
+	@property
+	def offline_id(self):
+		return [sat.id for sat in self.sats 
+		if sat.status is SAT_ST["Off"]]
+
 
 	@property
 	def pattern(self):
@@ -249,7 +260,7 @@ class Ctll(object):
 			statuss,
 			specs,
 			instrumentss,		
-			pattern=PAT['WD']+f' T/P/F = {T}/{P}/{F}',
+			pattern=[{"PAT":PAT['WD']+f' T/P/F = {T}/{P}/{F}',"N":T}],
 			epoch=epoch
 		)
 
@@ -257,8 +268,8 @@ class Ctll(object):
 	def _set_sats(self):
 		"""Returns sats attribute: list of sats"""
 
-		return [Sat(st,status,spec,instr) for st,status,spec,instr
-		 in zip(self.states,self.statuss,self.specs,self.instrumentss)]
+		return [Sat(st,status,spec,instr) for st,status,instr,spec
+		 in zip(self.states,self.statuss,self.instrumentss,self.specs)]
 
 
 
@@ -309,8 +320,23 @@ class Ctll(object):
 		
 		return sspss
 
+	def __add__(self, other):
+		if isinstance(other, __class__):
+			new_pattern = other.pattern + self.pattern
+			new_states = other.states + self.states 
+			new_statuss = other.statuss + self.statuss
+			new_specs = other.specs + self.specs
+			new_instrumentss = other.instrumentss + self.instrumentss
+			epoch = self.epoch
 
-	def getSat(self,uuid):
+			return Ctll(new_states, new_statuss, new_specs, new_instrumentss,
+			new_pattern,epoch)
+
+		else:
+			raise TypeError("Invalid types")
+
+		
+	def get_sat(self,uuid):
 		"""Get satellite by uuid
 		
 		Parameters
@@ -326,7 +352,7 @@ class Ctll(object):
 		raise Exception("Satellite not found")
 
 
-	def UpdateStatus(self,newStatuss):
+	def update_status(self,newStatuss):
 		"""Updates ctll sats status.
 		
 		Parameters
@@ -339,7 +365,7 @@ class Ctll(object):
 		for sat,status in zip(self.sats,newStatuss):
 			sat.UpdateStatus(status)
 
-	def UpdateSpecs(self,newSpecs):
+	def update_specs(self,newSpecs):
 		"""Updates ctll sats specifications.
 		
 		Parameters
@@ -350,9 +376,9 @@ class Ctll(object):
 		
 		self.statuss = newSpecs 
 		for sat,spec in zip(self.sats,newSpecs):
-			sat.UpdateSpec(spec)
+			sat.update_spec(spec)
 
-	def UpdateInstruments(self,newInstr):
+	def update_instruments(self,newInstr):
 		"""Updates ctll sats Instruments.
 		
 		Parameters
@@ -363,27 +389,10 @@ class Ctll(object):
 		
 		self.instrumentss = newInstr 
 		for sat,instr in zip(self.sats,newInstr):
-			sat.UpdateInstruments(instr)
+			sat.update_instruments(instr)
 
 
-	def getSatsId(self):
-		"""Returns satellites ids list in order."""
-		return [sat.id for sat in self.sats]
-
-	def getOnlineSatsId(self):
-		"""Returns online satellites ids list in order.
-		"""
-		return [sat.id for sat in self.sats 
-		if sat.status is SAT_ST["On"]]
-
-	def getOfflineSatsId(self):
-		"""Returns offline satellites ids list in order.
-		"""
-		return [sat.id for sat in self.sats 
-		if sat.status is SAT_ST["Off"]]
-
-
-	def Info(self,v=False):
+	def info(self,v=False):
 		"""Prints out Constellation info.
 		
 		Parameters
@@ -395,16 +404,16 @@ class Ctll(object):
 
 		if not v:
 			for patt in self.pattern:
-				print(f"\n{patt[1]} satellites within {patt[0]}")
+				print(f"\n{patt['N']} satellites within {patt['PAT']}")
 
 		else:
 			offset = 0 
 			for j in range(len(self.pattern)):	
-				print(f"\n{self.pattern[j][1]} satellites in "+
-					f"{self.pattern[j][0]}\n")
-				for i in range(self.pattern[j][1]):
-					self.sats[offset+i].Info()
-				offset += self.pattern[j][1]
+				print(f"\n{self.pattern[j]['N']} satellites in "+
+					f"{self.pattern[j]['PAT']}\n")
+				for i in range(self.pattern[j]['N']):
+					self.sats[offset+i].info()
+				offset += self.pattern[j]['N']
 				
 
 

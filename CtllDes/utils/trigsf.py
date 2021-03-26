@@ -1,10 +1,9 @@
 import math
 import numpy as np 
-from .. import units as u
 
 def SSA(a,b,A):
     #returns c, B,C where capital letters indicate angles, and small ones great circle arcs
-    B = math.asin((math.sin(b)*math.sin(A))/math.sin(a))%(2*u.pi)
+    B = math.asin((math.sin(b)*math.sin(A))/math.sin(a))%(2*np.pi)
     c = MSL(a,b,A,B)
     #C = MAL(A,B,a,b) not implemented because i dont need it (yet)
     
@@ -31,13 +30,13 @@ def pitolat(rad):
     """Util solamente por ahora para traducir resultados de AAS a lat y long"""
     sgn = np.sign(rad)
     if sgn == 1:
-        if  rad > u.pi/2:
-            return u.pi/2 - rad%(u.pi/2)
+        if  rad > np.pi/2:
+            return np.pi/2 - rad%(np.pi/2)
         else:
             return rad
     else:
-        if rad < -u.pi/2:
-            return -u.pi/2 + rad%(u.pi/2)
+        if rad < -np.pi/2:
+            return -np.pi/2 + rad%(np.pi/2)
         else: 
             return rad
 
@@ -49,15 +48,9 @@ def c2s(x,y,z):
     Devuelve: r, lat, lon
     """
     r = (x**2+y**2+z**2)**(1/2)
-    lat = np.arccos( (x**2+y**2)**(1/2) /r)
-    if z<0:
-        lat *= -1
+    lat = np.sign(z)*np.arccos( ((x**2+y**2)**(1/2)) /r)
     lon = np.arctan2(y,x)
 
     return r,lat,lon
 
-def rad2deg(rad):
-    return rad*u.rad2deg
 
-def deg2rad(deg):
-    return deg/u.rad2deg

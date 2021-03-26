@@ -1,3 +1,5 @@
+from poliastro import ephem
+
 from poliastro.bodies import Earth
 from poliastro.twobody import Orbit, propagation,states
 from poliastro.constants import J2000
@@ -9,9 +11,12 @@ from astropy import time, units as u
 
 from . import ctll
 from .specs import Specifications
+from .instrument import Instrument
+from ..utils import trigsf
 
 import uuid
 import numpy as np
+from scipy.interpolate import interp1d
 
 
 SAT_ST = {
@@ -20,7 +25,7 @@ SAT_ST = {
 }
 
 
-PROPAGATOR_DT = 100
+PROPAGATOR_DT = 50
 
 class Sat(object):
 
@@ -38,13 +43,13 @@ class Sat(object):
 		----------
 		state : ~poliastro.twobody.states.ClassicalState
 			State for satellite orbit
-		status : string
+		status : string, optional
 			SAT_STATUS string
 		spec : ~Ctlldes.core.spec
 			specifications
 		epoch : ~astropy.time.Time, optional
 		    Epoch, default to J2000.
-		instruments : list
+		instruments : list, optional
 			List of Instrument objects
 
 		"""
@@ -55,11 +60,11 @@ class Sat(object):
 		self._epoch = epoch
 
 		if not instruments:
-			self._instruments = []
+			self.instruments = []
 		elif not isinstance(isntrumentss,list):
-			self._instruments = [instruments]
+			self.instruments = [instruments]
 		else:
-			self._instruments = instruments
+			self.instruments = instruments
 
 
 		self._id = uuid.uuid4()
@@ -72,10 +77,11 @@ class Sat(object):
 
 	@state.setter
 	def state(self,state):
-		if not isinstance(state,states.BaseState):
+		if not isinstance(state,states.BaseState): 
 			raise Exception("Invalid state")
 		else:
 			self._state = state
+	
 	@property
 	def status(self):
 		return self._status
@@ -94,25 +100,29 @@ class Sat(object):
 	
 	@spec.setter
 	def spec(self,spec):
-		#TODO implmeent specifications class
-		if not isinstance(spec,Specifications):
+		if not isinstance(spec,Specifications): 
 			raise Exception("Invalid satellite specifications")
 		self._spec = spec
 
 	@property
-	def instrument(self):
+	def instruments(self):
 		return self._isntruments
 
-	@instrument.setter
-	def instrument(self,instrument):
+	@instruments.setter
+	def instruments(self,instruments):
 		for instr in instruments:
-			if not isinstance(instr, Instrument):
+			if not isinstance(instr, Instrument): 
 				raise Exception(f"{type(instr)} is not an Instrument object")
 		self._instruments = instruments
 
 	@property
 	def id(self):
 		return self._id
+
+	@property
+	def Propagator(self):
+		return self._Propagator
+	
 
 	@property
 	def attractor(self):
@@ -140,24 +150,70 @@ class Sat(object):
 		if "_coverage" in set(dir(instr))]
 		return self.covInstr
 	
-	#TODO: property setters for Instruments objects 
+	
+	
+	@classmethod
+	def from_orbit(
+			cls,
+			orbit,
+			status=SAT_ST["On"],
+			spec=None,
+			instruments=None
+	):
+		"""Returns Satellite from specified orbit.
 
+		Parameters
+		----------
+		orbit : poliastro.twobody.orbit.Orbit
+			Specific Orbit
+		status : string, optional
+			SAT_STATUS string
+		spec : ~Ctlldes.core.spec
+			specifications
+		instruments : list, optional
+			List of Instrument objects
 
+		"""
 
-	# @classmethod 
-	# def from_HelioSync(cls,):
+		return cls(orbit._state,status,spec,instruments,orbit.epoch)
 
-	# 	return cls()
+	@classmethod
+	def from_vectors(
+			cls,
+			r,
+			v,
+			attractor=Earth,
+			epoch=J2000,
+			plane=Planes.EARTH_EQUATOR,
+			status=SAT_ST["On"],
+			spec=None,
+			instruments=None
+	):
+		"""Return Satellite from position and velocity vecotrs
+		
+		Parameters
+		----------
+		r : ~astropy.units.Quantity
+			Position vector wrt attractor center.
+		v : ~astropy.units.Quantity
+			Velocity vector.	
+		attractor : Body
+			Main attractor
+		epoch : ~astropy.time.Time, optional
+		    Epoch, default to J2000.
+		plane : ~poliastro.frames.Planes
+		    Fundamental plane of the frame.
+		status : string, optional
+			SAT_STATUS string
+		spec : ~Ctlldes.core.spec
+			specifications
+		instruments : list, optional
+			List of Instrument objects
 
-	# @classmethod
-	# def GeoSync():
+		"""
 
-	# 	return cls()
-
-	# @classmethod
-	# def GeoHelioSync(cls, ):
-
-	# 	return cls()
+		orbit = Orbit.from_vectors(attractor, r, v, epoch, planes)
+		return Sat.from_orbit(orbit,status,spec,instruments)
 
 
 	def rv(self,T,dt=1.,method=propagation.cowell,**kwargs):
@@ -177,8 +233,7 @@ class Sat(object):
 			objects array, size=floor(T*24*3600/dt)
 		
 		"""
-		rr,vv = self.Propagator.get_rv(self.orbit,T,dt,
-			method=method,**kwargs)
+		rr,vv = self.Propagator.get_rv(T,dt,method,**kwargs)
 
 		return rr,vv
 
@@ -199,27 +254,41 @@ class Sat(object):
 			objects array, size = floor(T*24*3600/dt)
 		
 		"""
-
-		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
-		rr,vv = self.rv(T,dt,method,**kwargs)
+		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/self.Propagator._DT))
+		rr,vv = self.rv(T,self.Propagator._DT,method,**kwargs)
 		rs,lats,lons = trigsf.c2s(
-			rr[0,:].value,
-			rr[1,:].value,
-			rr[2,:].value
+			rr[:,0].value,
+			rr[:,1].value,
+			rr[:,2].value
 		)
 
 		w = self.attractor.angular_velocity
-		lons = np.array([lon-t*w for lon in lons])*u.rad
+		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
 		lats = lats*u.rad
 
+		#this manipulation is needed to fold the interpolation 
+		adder = 2*np.pi * u.rad
+		for i in range(1,len(lons)):
+			if lons[i].value-lons[i-1].value > 1:
+				sgn=np.sign(lons[i].value-lons[i-1].value)
+				lons[i:] += -sgn*adder
+		
+		flats = interp1d(tofs,lats)
+		flons = interp1d(tofs,lons)
+		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
+		lats = flats(tofs)
+		lons = flons(tofs) % (2*np.pi)
+		
 		return lats,lons
 
+	def update_instruments(self,instruments):
+		"""Updates satellite's insruments
 
-	def UpdateInstruments(self,instruments):
-
+		
+		"""
 		self.instruments = instruments
 
-	def UpdateStatus(self,newStatus):
+	def update_status(self,newStatus):
 		"""Updates satellite's status
 		
 		Parameters
@@ -231,7 +300,7 @@ class Sat(object):
 		self.status = newStatus
 
 
-	def Info(self):
+	def info(self):
 		print(f"id : {self.id}\t[a ecc inc raan argp nu] : "+
 			f"[{self.orbit.a:.1f} {self.orbit.ecc:.1f} {self.orbit.inc:.1f}"+
 			f" {self.orbit.raan:.1f} {self.orbit.argp:.1f} {self.orbit.nu:.1f}]"+
@@ -253,7 +322,7 @@ class Propagator(object):
 	):
 		
 		"""Propagator object builder. Build coordinates"""
-		self._propagatorDT = PROPAGATOR_DT 
+		self._DT = PROPAGATOR_DT 
 
 
 		self._orbit = orbit 
@@ -263,7 +332,7 @@ class Propagator(object):
 		#TODO: check if this is ok unpacking.
 
 		self._tofs = None
-		self._coords = self._setcoords()
+		self._setcoords()
 		
 
 		#hardsetted to optimize performance on interpolation
@@ -286,8 +355,8 @@ class Propagator(object):
 
 	@T.setter
 	def T(self,T):
-		if not isinstance(T,float): 	
-			raise Exception("T has to be float or int")
+		if not isinstance(T,float) and not isinstance(T,int): 	
+			raise Exception("T has to be float or int ")
 		if T <= 0: raise Exception("T must be positive and != 0")
 		self._T = T
 	
@@ -336,13 +405,13 @@ class Propagator(object):
 
 
 		self.tofs = TimeDelta(np.linspace(0,self.T*24*3600*u.s,
-		 num=int(self.T*24*3600/self._propagatorDT)))
+		 num=int(self.T*24*3600/self._DT)))
 		
-		return propagation.propagate(self.orbit,
+		self._coords = propagation.propagate(self.orbit,
 			self.tofs,method=self.method,**self.kwargs)
 
 
-	def get_rv(self,T,dt=1.,*,method=propagation.cowell,**kwargs):
+	def get_rv(self,T,dt=1.,method=propagation.cowell,**kwargs):
 
 		"""Get position and velocity for specified Time of flight
 		
@@ -370,13 +439,13 @@ class Propagator(object):
 
 
 
-		if not isinstance(T,float): 
-			raise Exception("T has to be float or int")
-		if T <= 0: raise Exception("T must be positive and != 0")
+		# if not isinstance(T,float): 
+		# 	raise Exception("T has to be float")
+		# if T <= 0: raise Exception("T must be positive and != 0")
 
 
-		if not isinstance(dt,float): raise Exception("dt has to be float")
-		if dt <= 0: raise Exception("dt must be positive and !=0")	
+		# if not isinstance(dt,float): raise Exception("dt has to be float")
+		# if dt <= 0: raise Exception("dt must be positive and !=0")	
 
 
 
@@ -395,12 +464,10 @@ class Propagator(object):
 		if flag:
 			self._setcoords()
 
-		tofs = TimeDelta(np.linspace(0,T*24*3600*u.s,
-		 num=int(T*24*3600/dt)))
+		tofs = TimeDelta(np.linspace(0, T*24*3600*u.s, num=int(T*24*3600/dt)))
 
 
-		ephemerides = ephem.Ephem(self.coords,self.tofs,
-			Planes.EARTH_EQUATOR)
+		ephemerides = ephem.Ephem(self.coords,self.tofs, Planes.EARTH_EQUATOR)
 		
 		return ephemerides.rv(tofs)
 	

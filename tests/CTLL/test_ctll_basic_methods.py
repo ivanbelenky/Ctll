@@ -37,9 +37,9 @@ def test_one_satellite_constellation_without_specs_instruments_status():
 	print("this are the constellation specs",constellation.specs)
 	print("this are the constellation patterns",constellation.pattern)
 	print("this is the constellation status",constellation.statuss)
-	print("Online satellite are",constellation.getOnlineSatsId())
+	print("Online satellite are",constellation.online_id)
 	
-	constellation.Info(v=True)
+	constellation.info(v=True)
 
 def test_one_satellite_constellation_with_status_without_specs_instruments():
 	state = [st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu,plane)]
@@ -49,9 +49,9 @@ def test_one_satellite_constellation_with_status_without_specs_instruments():
 	print("this are the constellation specs",constellation.specs)
 	print("this are the constellation patterns",constellation.pattern)
 	print("this is the constellation status",constellation.statuss)
-	print("Online satellite are",constellation.getOnlineSatsId())
+	print("Online satellite are",constellation.online_id)
 	
-	constellation.Info(v=True)
+	constellation.info(v=True)
 
 def test_arbitrary_satellite_without_specs_isntruments_status():
 
@@ -66,9 +66,9 @@ def test_arbitrary_satellite_without_specs_isntruments_status():
 	print("this are the constellation specs",constellation.specs)
 	print("this are the constellation patterns",constellation.pattern)
 	print("this is the constellation status",constellation.statuss)
-	print("Online satellite are",constellation.getOnlineSatsId())
+	print("Online satellite are",constellation.online_id)
 	
-	constellation.Info(v=True)
+	constellation.info(v=True)
 
 def test_constellation_class_method_from_Walker_Delta_without_instruments_specs_status():
 	T = 10
@@ -81,47 +81,10 @@ def test_constellation_class_method_from_Walker_Delta_without_instruments_specs_
 	print("this are the constellation specs",constellation.specs)
 	print("this are the constellation patterns",constellation.pattern)
 	print("this is the constellation status",constellation.statuss)
-	print("Online satellite are",constellation.getOnlineSatsId())
+	print("Online satellite are",constellation.online_id)
 	
-	constellation.Info(v=True)
+	constellation.info(v=True)
 
-
-def test_constellation_creating_constellation_adding_satellites():
-	T = 8
-	P = 2
-	F = 3
-
-	constellation = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
-
-	new_p = p - 10000 * u.km
-
-	new_state = [st.ClassicalState(Earth,new_p,ecc,inc,raan,argp,nu,plane)]
-	new_sat = satellite.Sat(new_state)
-
-	constellation.addSat(new_sat)
-
-	ids = constellation.getOnlineSatsId() 
-	sat_id = ids[-1]
-	sat = getSat(sat_id)
-
-	sat.Info()
-
-
-def test_constellation_adding():
-	states = []
-	N = 6
-	for i in range(1,N):
-		states.append(st.ClassicalState(Earth,p,ecc,inc,raan,argp,nu+2*pi/i*u.rad,plane))
-	
-	constellation1 = ctll.Ctll(states)
-	
-	T = 8
-	P = 2
-	F = 3
-	p2 = p - 5000 * u.km
-	constellation2 = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
-	 
-	constellation = constellation1 + constellation2 
 
 
 
@@ -141,20 +104,15 @@ def test_adding_constellation_and_individual_satellites():
 	p2 = p - 5000 * u.km
 	constellation2 = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
 	 
-	#individual new satellite
-	new_p = p - 10000 * u.km
-	new_state = [st.ClassicalState(Earth,new_p,ecc,inc,raan,argp,nu,plane)]
-	new_sat = satellite.Sat(new_state)
-
-	constellation = constellation1 + constellation2 + sat
+	constellation = constellation1 + constellation2 
 
 	print("this are the constellation intrumentss",constellation.instrumentss)
-	print("this are the constellation specs",constellation.specs)
+	#print("this are the constellation specs",constellation.specs)
 	print("this are the constellation patterns",constellation.pattern)
 	print("this is the constellation status",constellation.statuss)
-	print("Online satellite are",constellation.getOnlineSatsId())
+	print("Online satellite are",constellation.online_id)
 	
-	constellation.Info(v=True)
+	constellation.info(v=True)
 
 
 
