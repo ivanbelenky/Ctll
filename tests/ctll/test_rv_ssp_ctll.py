@@ -21,7 +21,7 @@ from CtllDes.core import ctll, satellite
 
 p = 7000 * u.km
 ecc = 0 * u.one 
-inc = np.pi/3*2 * u.rad
+inc = 95 * u.deg
 raan = 0 * u.rad
 argp = 0 * u.rad
 nu = 0 * u.rad
@@ -66,16 +66,17 @@ def test_ssps_ctll():
 	constellation = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
 	constellation.info(v=True)
 
-	latlon = constellation.ssps(0.1)
+	latlon = constellation.ssps(0.041)
 
 	fig = plt.figure()
 
-	print(latlon)
-
+	print("type of latlon objects", type(latlon[0][1]))
+ 
 	plt.scatter(latlon[0][1],latlon[0][0],s=0.3,c='k')
 	plt.xlabel("longitude [rad]")
 	plt.ylabel("latitude [rad]")
 	plt.show()
+
 
 
 

@@ -1,13 +1,13 @@
-from ..core import CTLL, Instrument, SAT
+from ..core import ctll, Instrument, sat
 
 
-def coverages_from_SAT(SAT, targets,T, dt=1.):
+def coverages_from_sat(sat, targets,T, dt=1.):
 	"""Build list of coverage objects from satellite
 	
 	Parameters
 	----------
-	SAT : ~CtllDes.core.SAT
-		SAT object
+	sat : ~CtllDes.core.sat
+		sat object
 	targets : ~CtllDes.targets 
 		Desired targets of coverage
 	T : float
@@ -18,34 +18,36 @@ def coverages_from_SAT(SAT, targets,T, dt=1.):
 	Returns
 	-------
 	Coverages : list
-		List of Coverage objects. 
+		List of Coverage objects, one for each target, and one for 
+		each coverage instrument in the satellite.
 
 	"""
 
 
-	CovInstruments = [SAT.instr for instr in SAT.CovInstruments]
+	CovInstruments = [sat.instr for instr in sat.CovInstruments]
 	if not len(CovInstruments):
 		raise Exception("No coverage instruments found on" +
-			f" SATID : {SAT.id}")	
+			f" satID : {sat.id}")	
 
-	ssps = SAT.ssps(T,dt)
+	ssps = sat.ssps(T,dt)
+	r,v = sat.rv(T,dt)
 
 	Coverages = []
 	for instr in CovInstrument:
 		for target in targets:
-			cov = isCovered(ssps,target,instr._coverage)
-			Coverages.append(Coverage(cov,target,instr.id))
+			cov = isCovered(ssps,r,target,sat.attractor.R_mean,instr._coverage)
+			Coverages.append(Coverage(cov,target,instr.id,dt))
 
 	return Coverages
 
-def coverages_from_CTLL(CTLL,targets,T,dt=1.):
+def coverages_from_ctll(ctll,targets,T,dt=1.):
 	"""Get coverages from Constellation Object.
 
 	"""
 	Coverages = []
-	for sats in CTLL.sats:
+	for sats in ctll.sats:
 		try:
-			covs = coverages_from_SAT(sat,targets,T,dt)
+			covs = coverages_from_sat(sat,targets,T,dt)
 		except Exception:
 			pass
 		else:
@@ -56,8 +58,35 @@ def coverages_from_CTLL(CTLL,targets,T,dt=1.):
 
 	return Coverages
 
-def isCovered(ssps,target,CoverageMethod):
+def isCovered(ssps,r,target,R,coverage_method):
+	"""The CoverageMethod, returns an arbitrary length tuple of
+	comparing functions. 
 
+	Parameters
+	----------
+
+	This functions must be such that their input
+	are, the sub satellite points, the position and the target in question. 
+	It returns a list the same length of subsatellite points  """
+
+	functions = list(coverage_method())
+	outputs = np.array([func(ssps,r,target,R) for func in functions ])
+	#column-wise multiplication, checks all requirements.
+	cov = [ np.prod(outputs[:,i]) for i in outputs.shape[0] ]
+	return cov	
+
+
+#list of built-in coverage methods
+
+def symmetric():
+	pass
+
+def symmetric_with_roll():
+	pass
+
+
+
+COVERAGE_COMPARING_METHODS = [symmetric, symmetric_with_roll]
 
 
 class Coverage(object):
@@ -65,11 +94,13 @@ class Coverage(object):
 	def __init__(self,
 		cov,
 		target,
+		dt,
 		instrumentID = None
 	):
 
 		self._cov = cov
 		self._target = target 
+		self._dt = dt
 		self._instrumentID = instrumentID if instrumentID 
 		else uuid.uuid4()
 

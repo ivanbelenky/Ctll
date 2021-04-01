@@ -12,7 +12,7 @@ from astropy import time, units as u
 
 from .satellite import Sat, SAT_ST 
 from .specs import Specifications
-
+from .instrument import Instrument
 try:
     from functools import cached_property  # type: ignore
 except ImportError:
@@ -134,9 +134,12 @@ class Ctll(object):
 	
 	@instrumentss.setter
 	def instrumentss(self,instrumentss):
-		if not isinstance(instrumentss,list):
-			raise Exception("Satellites instruments must be a list")
+		if not isinstance(instrumentss,list) and not isinstance(instrumentss,Instrument):
+			raise Exception("Satellites instruments must be a list or Instrument object")
 		
+		if isinstance(instrumentss,Instrument):
+			instrumentss = [instrumentss for _ in range(self.N)]
+
 		N_instr = len(instrumentss) 
 		
 		if N_instr == 0:

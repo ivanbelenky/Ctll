@@ -253,31 +253,12 @@ class Sat(object):
 			list of tuples (lat,long), lat and lon are Quantity 
 			objects array, size = floor(T*24*3600/dt)
 		
+		Exactly and very near polar orbits interpolation results in domain error.
+
 		"""
-		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/self.Propagator._DT))
-		rr,vv = self.rv(T,self.Propagator._DT,method,**kwargs)
-		rs,lats,lons = trigsf.c2s(
-			rr[:,0].value,
-			rr[:,1].value,
-			rr[:,2].value
-		)
-
-		w = self.attractor.angular_velocity
-		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
-		lats = lats*u.rad
-
-		#this manipulation is needed to fold the interpolation 
-		adder = 2*np.pi * u.rad
-		for i in range(1,len(lons)):
-			if lons[i].value-lons[i-1].value > 1:
-				sgn=np.sign(lons[i].value-lons[i-1].value)
-				lons[i:] += -sgn*adder
 		
-		flats = interp1d(tofs,lats)
-		flons = interp1d(tofs,lons)
-		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
-		lats = flats(tofs)
-		lons = flons(tofs) % (2*np.pi)
+		w = self.attractor.angular_velocity
+		lats,lons = self.Propagator.get_ssps(T,dt,w,method=propagation.cowell,**kwargs)
 		
 		return lats,lons
 
@@ -471,4 +452,50 @@ class Propagator(object):
 		
 		return ephemerides.rv(tofs)
 	
+
+	def get_ssps(self,T,dt,w,method=propagation.cowell,**kwargs):
+		"""Return subsatellite points"""
+
+		flag = False
+		if kwargs:
+			if kwargs != self.kwargs:
+				flag = True
+				self.kwargs = kwargs
+		if T > self.T:
+			flag = True 
+			self.T = T
+		if method != self.method:
+			flag = True
+			self.method = method
+
+		if flag:
+			self._setcoords()
+
+		ephemerides = ephem.Ephem(self.coords,self.tofs, Planes.EARTH_EQUATOR)
+		rr,vv = ephemerides.rv()
+		print("le shape is ", rr.shape)
+		rs,lats,lons = trigsf.c2s(rr[:,0].value, rr[:,1].value, rr[:,2].value)
+
+		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/self._DT))
+		
+		#de-rotation
+		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
+		lats = lats*u.rad
+
+		#this manipulation is needed to fold the interpolation 
+		adder = 2*np.pi * u.rad
+		for i in range(1,len(lons)):
+			if np.abs(lons[i].value-lons[i-1].value) > 1:
+				sgn=np.sign(lons[i].value-lons[i-1].value)
+				lons[i:] += -sgn*adder
+		
+		#interpolation of manipulated and folded points 
+		flats = interp1d(tofs,lats)
+		flons = interp1d(tofs,lons)
+		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
+		lats = flats(tofs)
+		lons = flons(tofs) % (2*np.pi)
+		
+		return lats,lons
+
 
