@@ -137,7 +137,7 @@ def symmetric_with_roll():
 COVERAGE_COMPARING_METHODS = [symmetric, symmetric_with_roll]
 
 
-
+class Coverages(abc,)
 
 
 class Coverage(object):
@@ -145,16 +145,27 @@ class Coverage(object):
 	def __init__(self,
 		cov,
 		target,
-		dt,
-		instrumentID = None
+		dt
 	):
 
 		self._cov = cov
 		self._target = target 
 		self._dt = dt
-		self._instrumentID = instrumentID if instrumentID 
-		else uuid.uuid4()
+		
+	@cached_property
+	def accumulated(self):
+		return self._accum
 
+	@cached_property
+	def mean_gap(self):
+		return self._mean_gap
+
+	@cached_property
+	def response_time(self):
+		return self._resp_t
+
+	@cached_property
+	def 
 
 	def acumulado(self):
 		"""Tiempo acumulado de cobertura.

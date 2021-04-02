@@ -3,18 +3,26 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely.geometry import Point
-
+from collections.abc import Iterable
 
 
 class Targets(collections.abc.Set):
 	def __init__(self,targets,tag=None):
 		self._targets = lst = list()
 		self._tag = tag if tag else "No Tag"
-		for target in targets:
-			if not isinstance(target,(Point,Target)):
-				raise TypeError("targets must contain Point or Target object ") 
-			if target not in lst:
-				lst.append(target)
+		if isinstance(targets,Target):
+			lst.append(targets)
+		elif isinstance(targets,Point):
+			lst.append(Target(targets.x,targets.y))
+		elif not isinstance(targets,Iterable):
+			raise TypeError("Targets must be Target or Point, or iterable collection of Target or Point objects")
+		else: 	
+			for target in targets:
+				if not isinstance(target,(Point,Target)):
+					raise TypeError("Targets must be Target or iterable collection of Target objects") 
+				if target not in lst:
+					if isinstance(target,Point)
+					lst.append(Target(point.x,point.y))
 
 	@property
 	def targets(self):
@@ -30,15 +38,19 @@ class Targets(collections.abc.Set):
 	def __len__(self):
 		len(self.elements)
 
+
 	@classmethod
 	def from_country(cls,country,N=50):
 		if not isintance(country,str):
-			raise TypeError("Country argument must be string")
+			raise TypeError("country argument must be string")
+		if not isinstance(N,(float,int)):
+			raise TypeError("N must be float or int")
+		elif N<1:
+			raise ValueError("N must be at least 1")
 		
 		fp = 'borders-simple/TM_WORLD_BORDERS_SIMPL-0.3.shp'
 		data = gpd.read_file(fp)
 		data = gpd.read_file(fp)
-		#data.loc[data['NAME'].where('Argentina')]
 
 		country_row = data.loc[data['NAME'] == country]
 		country_row['geometry']
@@ -61,17 +73,22 @@ class Targets(collections.abc.Set):
 		return cls(inside_points,tag=country)
 
 	@classmethod
-	def from_city(cls,city,N=50):
-		if not isintance(country,str):
-			raise TypeError("Country argument must be string")
-		
-		#TODO: download files for city borders
-		fp = 'borders-simple/TM_WORLD_BORDERS_SIMPL-0.3.shp'
-		data = gpd.read_file(fp)
-		data = gpd.read_file(fp)
-		#data.loc[data['NAME'].where('Argentina')]
+	def from_state(cls,state,N=50):
+		if not isintance(state,str):
+			raise TypeError("state argument must be string")
+		if not isinstance(N,(float,int)):
+			raise TypeError("N must be float or int")
+		elif N<1:
+			raise ValueError("N must be at least 1")
 
-		country_row = data.loc[data['NAME'] == country]
+		
+		fp = 'borders-states/ne_10m_admin_1_states_provinces.shp'
+		data = gpd.read_file(fp)
+		data = gpd.read_file(fp)
+
+		#TODO: Check all possible column keys where the string may be found
+
+		country_row = data.loc[data['name'] == country]
 		country_row['geometry']
 		cg = country_row['geometry'] 
 
@@ -92,6 +109,17 @@ class Targets(collections.abc.Set):
 
 		return cls(inside_points,tag=country)
 
+	def plot(self, use_3d=False):
+		figure = plt.figure()
+		x = [target.x for target in self.targets]
+		y = [target.y for target in self.targets]
+		if use_3d:
+			centroid = [sum(x)/len(x), sum(y)/len(y)]
+
+		else: 	
+			plt.scatter(x,y,c='k',s='0.1')
+
+		return figure
 
 
 class Target(object):
