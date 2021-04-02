@@ -1,5 +1,12 @@
 from ..core import ctll, Instrument, sat
 
+try:
+    from functools import cached_property  # type: ignore
+except ImportError:
+    from cached_property import cached_property  # type: ignore
+
+
+
 
 def coverages_from_sat(sat, targets,T, dt=1.):
 	"""Build list of coverage objects from satellite
@@ -8,7 +15,7 @@ def coverages_from_sat(sat, targets,T, dt=1.):
 	----------
 	sat : ~CtllDes.core.sat
 		sat object
-	targets : ~CtllDes.targets 
+	targets : ~CtllDes.targets.Targets 
 		Desired targets of coverage
 	T : float
 		Desired Time of analysis in days.
@@ -35,7 +42,7 @@ def coverages_from_sat(sat, targets,T, dt=1.):
 	Coverages = []
 	for instr in CovInstrument:
 		for target in targets:
-			cov = isCovered(ssps,r,target,sat.attractor.R_mean,instr._coverage)
+			cov = isCovered(ssps,r,target,sat.attractor.R_mean,instr.coverage())
 			Coverages.append(Coverage(cov,target,instr.id,dt))
 
 	return Coverages
@@ -69,8 +76,7 @@ def isCovered(ssps,r,target,R,coverage_method):
 	are, the sub satellite points, the position and the target in question. 
 	It returns a list the same length of subsatellite points  """
 
-	functions = list(coverage_method())
-	outputs = np.array([func(ssps,r,target,R) for func in functions ])
+	outputs = np.array(coverage_method(ssps,r,target,R))
 	#column-wise multiplication, checks all requirements.
 	cov = [ np.prod(outputs[:,i]) for i in outputs.shape[0] ]
 	return cov	
@@ -78,8 +84,50 @@ def isCovered(ssps,r,target,R,coverage_method):
 
 #list of built-in coverage methods
 
-def symmetric():
-	pass
+def symmetric(FOV):
+	def _symmetric(ssps,r,target,R):
+		radiis = np.sqrt(np.sum(a**2,axis=1))
+
+		rho = np.arcsin(R/radiis)*u.rad
+    	eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
+    	lam = (np.pi/2)*u.rad - FOV - eps
+
+		#TODO: missing math 
+
+    	boolean = []
+    	for _ in angles:
+    		if _ <= lam:
+    			boolean.append(1)
+    		else:
+    			boolean.append(0)
+    	return boolean
+
+    return _symmetric
+
+def symmetric_disk(FOV_max,FOV_min):
+	def _symmetric_disk(ssps,r,target,R)
+		radiis = np.sqrt(np.sum(a**2,axis=1))
+
+		rho = np.arcsin(R/radiis)*u.rad
+    	eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
+    	lam_min = (np.pi/2)*u.rad - FOV_min - eps
+    	lam_max = (np.pi/2)*u.rad - FOV_max - eps
+    	
+		#TODO: missing math 
+
+    	boolean = []
+    	for _ in angles:
+    		if  lam_min <= _ <= lam_max:
+    			boolean.append(1)
+    		else:
+    			boolean.append(0)
+    	
+    	return boolean
+
+    return _symmetric_disk
+
+
+
 
 def symmetric_with_roll():
 	pass
@@ -87,6 +135,9 @@ def symmetric_with_roll():
 
 
 COVERAGE_COMPARING_METHODS = [symmetric, symmetric_with_roll]
+
+
+
 
 
 class Coverage(object):
