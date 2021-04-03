@@ -323,6 +323,9 @@ class Ctll(object):
 		
 		return sspss
 
+	def __str__(self):
+		return f"{self.patt['N']} satellites within {patt['PAT']}"
+
 	def __add__(self, other):
 		if isinstance(other, __class__):
 			new_pattern = other.pattern + self.pattern

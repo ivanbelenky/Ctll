@@ -11,7 +11,9 @@ import sys
 
 fp_country = sys.path[0] + '/CtllDes/targets/borders-simple/TM_WORLD_BORDERS_SIMPL-0.3.shp'
 fp_state = sys.path[0] + '/CtllDes/targets/borders-states/ne_10m_admin_1_states_provinces.shp'
- 
+
+#TODO: check tolerance when testing
+TOL = 10**-5 
 
 class Targets(collections.abc.Set):
 	""""""
@@ -145,6 +147,8 @@ class Target(object):
 		self._lat = lat
 		self._lon = lon
 
+	
+
 	@property
 	def lat(self):
 		return self._lat
@@ -162,7 +166,10 @@ class Target(object):
 	def y(self):
 		return self._lat
 	
-
-
+	def __eq__(self, other):
+             if self.x-other.x < TOL and self.y-other.y < TOL:
+                  return True
+             else:
+             	return False
 
 		

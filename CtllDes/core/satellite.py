@@ -145,7 +145,7 @@ class Sat(object):
 		return self._orbit
 	
 	@property
-	def CovInstruments(self):
+	def cov_instruments(self):
 		covInstr = [instr for instr in self.instruments
 		if "_coverage" in set(dir(instr))]
 		return self.covInstr

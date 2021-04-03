@@ -8,65 +8,7 @@ try:
 except ImportError:
     from cached_property import cached_property  # type: ignore
 
-
-
-
-def coverages_from_sat(sat, targets,T, dt=1.):
-	"""Build list of coverage objects from satellite
-	
-	Parameters
-	----------
-	sat : ~CtllDes.core.sat
-		sat object
-	targets : ~CtllDes.targets.Targets 
-		Desired targets of coverage
-	T : float
-		Desired Time of analysis in days.
-	dt : float, optional
-		time interval between interpolations of ssp
-	
-	Returns
-	-------
-	Coverages : list
-		List of Coverage objects, one for each target, and one for 
-		each coverage instrument in the satellite.
-
-	"""
-
-
-	CovInstruments = [sat.instr for instr in sat.CovInstruments]
-	if not len(CovInstruments):
-		raise Exception("No coverage instruments found on" +
-			f" satID : {sat.id}")	
-
-	ssps = sat.ssps(T,dt)
-	r,v = sat.rv(T,dt)
-
-	Coverages = []
-	for instr in CovInstrument:
-		for target in targets:
-			cov = isCovered(ssps,r,target,sat.attractor.R_mean,instr.coverage())
-			Coverages.append(Coverage(cov,target,instr.id,dt))
-
-	return Coverages
-
-def coverages_from_ctll(ctll,targets,T,dt=1.):
-	"""Get coverages from Constellation Object.
-		
-	"""
-	Coverages = []
-	for sats in ctll.sats:
-		try:
-			covs = coverages_from_sat(sat,targets,T,dt)
-		except Exception:
-			pass
-		else:
-			Coverages.append(covs)
-
-	if not len(Coverages): 
-		raise Exception("Constellation has no Coverage Instruments")
-
-	return Coverages
+TOL = 1**(-10)
 
 def isCovered(ssps,r,target,R,coverage_method):
 	"""The CoverageMethod, returns an arbitrary length tuple of
@@ -74,6 +16,7 @@ def isCovered(ssps,r,target,R,coverage_method):
 
 	Parameters
 	----------
+	
 
 	This functions must be such that their input
 	are, the sub satellite points, the position and the target in question. 
@@ -139,12 +82,12 @@ def symmetric_with_roll():
 
 
 
-COVERAGE_COMPARING_METHODS = [symmetric, symmetric_with_roll]
+COVERAGE_COMPARING_METHODS = [symmetric, symmetric_disk, symmetric_with_roll]
 
 
 class Coverages(collections.abc.Set):
 		def __init__(self,covs,tag=None):
-		self._targets = lst = list()
+		self._covs = lst = list()
 		self._tag = tag if tag else "No Tag"
 
 		if isinstance(covs,Coverage):
@@ -154,9 +97,11 @@ class Coverages(collections.abc.Set):
 		else: 	
 			for cov in covs:
 				if not isinstance(cov,Coverage):
-					raise TypeError("Targets must be Target or iterable collection of Target objects") 
+					raise TypeError("covs must be a collection of Coverage objects") 
 				if cov not in lst:
 					lst.append()
+
+		self._targets = {cov.target for cov in self.covs}
 
 	@property
 	def covs(self):
@@ -171,38 +116,150 @@ class Coverages(collections.abc.Set):
 	def __len__(self):
 		len(self.covs)
 
+	def __str__(self):
+		return self.tag
+
+
 	@cached_property
 	def data(self):
 		return self.to_data()
 		#TODO: check if it is worth doing named tuple or other thing
 
-	#TODO: implement
-	@classmethod
-	def from_ctll
-		"""TODO docstring"""
-		pass
 
-	#TODO: implement
 	@classmethod
-	def from_sat
-		"""TODO docstring"""
-		pass
+	def from_ctll(cls,ctll,targets,T,dt):
+		"""Get coverages from constellation.
+		
+		Parameters
+		----------
+		ctll : CtllDes.core.ctll.Ctll
+			CtllDes constellation object
+		targets : CtllDes.targets.targets.Targets
+			Desired targets to build coverages
+		T : float | int
+			Desired time of coverage in days
+		dt : float | int, optional
+			time of sampling in seconds
 
-	#TODO: implement
+		Returns
+		-------
+		Coverages object containing only the coverage from
+		instruments that have _coverage function implemented.
+		
+		TODO: provide duck typing or not for instruments in ctll?
+		"""
+
+		ctll_covs = []
+		for sats in ctll.sats:
+			try:
+				sat_covs = Coverages.from_sat(sat,targets,T,dt)
+			except Exception:
+				pass
+			else:
+				ctll_covs += (sat_covs)
+
+		if not len(Coverages): 
+			raise Exception("Constellation has no Coverage Instruments")
+
+		return Coverages(ctll_covs,tag=ctll.__str__())
+
+
+	@classmethod
+	def from_sat(sat, targets,T, dt=1.):
+		"""Build list of coverage objects from satellite
+	
+		Parameters
+		----------
+		sat : ~CtllDes.core.sat
+			sat object
+		targets : ~CtllDes.targets.targets.Targets 
+			Desired targets of coverage
+		T : float
+			Desired Time of analysis in days.
+		dt : float | int, optional
+			time of sampling in seconds
+
+		Returns
+		-------
+		Coverages : list
+			List of Coverage objects, one for each target and  
+			coverage instrument.
+
+		"""
+
+
+		cov_instruments = [sat.instr for instr in sat.cov_instruments]
+		if not len(cov_instruments):
+			raise Exception("No coverage instruments found on" +
+				f" satID : {sat.id}")	
+
+		ssps = sat.ssps(T,dt)
+		r,v = sat.rv(T,dt)
+
+		sat_coverages = []
+		for instr in cov_instruments:
+			for target in targets:
+				cov = isCovered(ssps,r,target,sat.attractor.R_mean,instr.coverage())
+				sat_coverages.append(Coverage(cov,target,T,dt,instr.id))
+
+		return sat_coverages
+		
+
+	
 	def filter_by_target(self,target):
-		#TODO: implement	
-		pass
+		"""Obtain coverages filtered by target
+		
+		Parameters
+		----------
+		target : CtllDes.targets.targets.Target		
+		"""
+		lst = [cov for cov in self.covs if cov.target == target]
+		if not len(lst):
+			print(f"{target} not found in coverages")
+		else:
+			return Coverages(lst,tag=f"{self.tag} filtered by target = {target}")
+		
+	def filter_by_instrument(self,instr_id):
+		"""Obtain coverages filtered by instrument_id
+		
+		Parameters
+		----------
+		instr_id : UUID
+			desired instrument id to filter out
+		"""
+		lst = [cov for cov in self.covs if cov.id == instr_id]
+		if not len(lst):
+			print(f"Instrument with ID : {instr_id} not found")
+		else:
+			return Coverages(lst,tag=f"{self.tag} filtered by target = {instr_id}")
 
-	#TODO: implement
-	def filter_by_instrument(self,instrument):
-		#TODO: implement	
-		pass
+	def collapse_instruments(self):
+		"""Obtain coverages regardless of instrument.
 
-	#TODO: implement
-	def collapse(self):
-		#TODO: implement	
-		pass
+		Returns
+		-------
+		collapsed : CtllDes.requests.coverage.Coverages
+			Coverages object with Covs merged for target
 
+		"""
+		tgts = self.targets
+		cov_tgt = [[] for tgt in tgts]
+		for cov in self.covs:
+			idx = tgts.index(cov.target)
+			cov_tgt[idx].append(cov)
+
+		collapsed = []	
+		for covs in cov_tgt: 
+			new_cov = covs[0]
+			for i in range(1,len(covs)):
+				new_cov = new_cov + covs[i]
+			collapsed.append(new_cov)
+
+		return Coverages(collapsed,tag=f"{self.tag} collapsed")
+
+
+
+		
 
 class Coverage(object):
 	#TODO: docstring
@@ -210,84 +267,114 @@ class Coverage(object):
 	def __init__(self,
 		cov,
 		target,
-		dt
+		T,
+		dt,
+		instr_id=None,
 	):
-		#TODO: T should be added
 		self._cov = cov
-		self._target = target 
+		self._target = target
+		self._instr_id = instr_id 
+		self._T = T
 		self._dt = dt
+
+
+	def __add__(self,other):
+		if self.target != other.target:
+			raise ValueError("Targets must be equal")
+		elif self.T-other.T<TOL or self._dt-other.dt<TOL:
+			raise ValueError("T and dt must be equal")
+		elif len(self.cov) != len(other.cov):
+			raise ValueError("Tolerance may be ill-defined")
+		else:
+			new_cov = np.array(self.cov) | np.array(other.cov)
+			return Coverage(list(new_cov),self.target,self.T,self.dt)
+
+	@property
+	def cov(self):
+		return self._cov
+	
+	@property
+	def target(self):
+		return self._target
+	
+	@property
+	def T(self):
+		return self._T
+	
+	@property
+	def dt(self):
+		return self._dt
+	
 		
+
 	#TODO: implement
-	@cached_property
+	@property
 	def accumulated(self):
+		"""Accumulated time of view in seconds"""
 		return self._accum()
 
-	#TODO: implement
-	@cached_property
-	def mean_gap(self):
-		return self._mean_gap()
-
-	#TODO: implement
-	@cached_property
-	def response_time(self):
-		return self._resp_t()
-	
-	#TODO: implement
- 
-	#TODO: do this functions all over again, change language	
-	def acumulado(self):
-		"""Tiempo acumulado de cobertura.
-
-		El tiempo acumulado de cobertura depende de la resolucion temporal
-		
-		Recibe:
-
-		Devuelve:
-			acum: tiempo acumulado de cobertura en el lapso dado."""
-
-		acum = 0
-				
-		for c in merged:
-			acum += c*dt
-		return acum
+	def _accum(self):
+		return self.dt*sum(self.cov)
 
 
-	def gap_medio(self, vista = 1):
-		"""
-		Calcula gap medio
+	@property
+	def mean_gap_light(self):
+		return self._mean_gap(1)
 
-		Devuelve el valor del gap medio de cobertura o no cobertura respectivamente
-		dependiendo del valor de vista. 
+	@property 
+	def mean_gap_dark(self)Ñ
+		return self._mean_gap(0)
 
-		Recibe: 
-			vista: si es 1, calculara el valor medio del gap de cobertura. 
-			el complemento en caso de ser 0
-		Devuelve:
-			promedio de duracion del gap, en segundos."""
-
-		merged = self.merge()
-		
+	def _mean_gap(self,view):
 		gap = 0 
 		switch = 0 
 		c_gap = 0
 		
-		for c in merged:
-			if switch == 0 and c == vista:
+		for c in self.cov:
+			if switch == 0 and c == view:
 				switch = 1
 				c_gap += 1
 				gap += 1
-			elif switch == 1 and c != vista:
+			elif switch == 1 and c != view:
 				switch = 0
-
-			elif switch == 1 and c == vista:
+			elif switch == 1 and c == view:
 				gap += 1
-			elif switch == 0 and c != vista:
+			elif switch == 0 and c != view:
 				continue
 
 		if c_gap == 0:
 			return 0
 		else:
 			return gap*self.dt/c_gap	
+
+
+	
+	@property
+	def response_time(self):	
+		return self._resp_t()
+	
+	def _resp_t(self):
+		idx = []
+		resp_time = 0
+		gap = 0
+
+		for c in self.cov:
+			if switch == 0 and c == 0:
+				switch = 1
+				gap += 1
+			elif switch == 1 and c != 0:
+				switch = 0
+				resp_time += (gap+1)*gap/2
+				gap = 0
+			elif switch == 1 and c == 0:
+				gap += 1
+			elif switch == 0 and c != 0:
+				continue
+
+		return resp_time/len(self.cov)
+
+
+
 		
 
 	def plot_lapida(self, **kwargs):
