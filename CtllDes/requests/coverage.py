@@ -1,4 +1,7 @@
 from ..core import ctll, Instrument, sat
+import collections.abc
+from collections.abc import Iterable
+
 
 try:
     from functools import cached_property  # type: ignore
@@ -49,7 +52,7 @@ def coverages_from_sat(sat, targets,T, dt=1.):
 
 def coverages_from_ctll(ctll,targets,T,dt=1.):
 	"""Get coverages from Constellation Object.
-
+		
 	"""
 	Coverages = []
 	for sats in ctll.sats:
@@ -86,6 +89,7 @@ def isCovered(ssps,r,target,R,coverage_method):
 
 def symmetric(FOV):
 	def _symmetric(ssps,r,target,R):
+		"""TODO docstring"""
 		radiis = np.sqrt(np.sum(a**2,axis=1))
 
 		rho = np.arcsin(R/radiis)*u.rad
@@ -105,6 +109,7 @@ def symmetric(FOV):
     return _symmetric
 
 def symmetric_disk(FOV_max,FOV_min):
+	"""TODO docstring"""
 	def _symmetric_disk(ssps,r,target,R)
 		radiis = np.sqrt(np.sum(a**2,axis=1))
 
@@ -137,36 +142,99 @@ def symmetric_with_roll():
 COVERAGE_COMPARING_METHODS = [symmetric, symmetric_with_roll]
 
 
-class Coverages(abc,)
+class Coverages(collections.abc.Set):
+		def __init__(self,covs,tag=None):
+		self._targets = lst = list()
+		self._tag = tag if tag else "No Tag"
+
+		if isinstance(covs,Coverage):
+			lst.append(covs)
+		elif not isinstance(covs,Iterable):
+			raise TypeError("covs must be Coverage, or iterable collection of Coverage objects")
+		else: 	
+			for cov in covs:
+				if not isinstance(cov,Coverage):
+					raise TypeError("Targets must be Target or iterable collection of Target objects") 
+				if cov not in lst:
+					lst.append()
+
+	@property
+	def covs(self):
+		return self._covs
+	
+	def __iter__(self):
+		return iter(self.covs)
+
+	def __contains__(self,value):
+		return value in self.covs
+
+	def __len__(self):
+		len(self.covs)
+
+	@cached_property
+	def data(self):
+		return self.to_data()
+		#TODO: check if it is worth doing named tuple or other thing
+
+	#TODO: implement
+	@classmethod
+	def from_ctll
+		"""TODO docstring"""
+		pass
+
+	#TODO: implement
+	@classmethod
+	def from_sat
+		"""TODO docstring"""
+		pass
+
+	#TODO: implement
+	def filter_by_target(self,target):
+		#TODO: implement	
+		pass
+
+	#TODO: implement
+	def filter_by_instrument(self,instrument):
+		#TODO: implement	
+		pass
+
+	#TODO: implement
+	def collapse(self):
+		#TODO: implement	
+		pass
 
 
 class Coverage(object):
+	#TODO: docstring
 	
 	def __init__(self,
 		cov,
 		target,
 		dt
 	):
-
+		#TODO: T should be added
 		self._cov = cov
 		self._target = target 
 		self._dt = dt
 		
+	#TODO: implement
 	@cached_property
 	def accumulated(self):
-		return self._accum
+		return self._accum()
 
+	#TODO: implement
 	@cached_property
 	def mean_gap(self):
-		return self._mean_gap
+		return self._mean_gap()
 
+	#TODO: implement
 	@cached_property
 	def response_time(self):
-		return self._resp_t
-
-	@cached_property
-	def 
-
+		return self._resp_t()
+	
+	#TODO: implement
+ 
+	#TODO: do this functions all over again, change language	
 	def acumulado(self):
 		"""Tiempo acumulado de cobertura.
 

@@ -14,7 +14,10 @@ fp_state = sys.path[0] + '/CtllDes/targets/borders-states/ne_10m_admin_1_states_
  
 
 class Targets(collections.abc.Set):
+	""""""
+
 	def __init__(self,tgts,tag=None):
+		""""""
 		self._targets = lst = list()
 		self._tag = tag if tag else "No Tag"
 
@@ -51,6 +54,7 @@ class Targets(collections.abc.Set):
 
 	@classmethod
 	def from_country(cls,country,N=50):
+		""""""
 		if not isinstance(country,str):
 			raise TypeError("country argument must be string")
 		if not isinstance(N,(float,int)):
@@ -84,6 +88,7 @@ class Targets(collections.abc.Set):
 
 	@classmethod
 	def from_state(cls,state,N=50):
+		""""""
 		if not isinstance(state,str):
 			raise TypeError("state argument must be string")
 		if not isinstance(N,(float,int)):
@@ -134,8 +139,9 @@ class Targets(collections.abc.Set):
 
 
 class Target(object):
-	"""docstring for Target"""
+	""""""
 	def __init__(self,lon,lat):
+		""""""
 		self._lat = lat
 		self._lon = lon
 
