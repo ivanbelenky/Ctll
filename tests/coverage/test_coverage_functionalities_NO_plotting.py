@@ -36,3 +36,4 @@ def test_coverage_basic():
 	covs_data = covs.data
 	acumulated = covs_data.accumulated
 	mean_gap = covs_data.mean_gap
+

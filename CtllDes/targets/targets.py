@@ -3,26 +3,36 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely.geometry import Point
+import collections.abc
 from collections.abc import Iterable
 
+import os
+import sys
+
+fp_country = sys.path[0] + '/CtllDes/targets/borders-simple/TM_WORLD_BORDERS_SIMPL-0.3.shp'
+fp_state = sys.path[0] + '/CtllDes/targets/borders-states/ne_10m_admin_1_states_provinces.shp'
+ 
 
 class Targets(collections.abc.Set):
-	def __init__(self,targets,tag=None):
+	def __init__(self,tgts,tag=None):
 		self._targets = lst = list()
 		self._tag = tag if tag else "No Tag"
-		if isinstance(targets,Target):
-			lst.append(targets)
-		elif isinstance(targets,Point):
-			lst.append(Target(targets.x,targets.y))
-		elif not isinstance(targets,Iterable):
+
+		if isinstance(tgts,Target):
+			lst.append(tgts)
+		elif isinstance(tgts,Point):
+			lst.append(Target(tgts.x,tgts.y))
+		elif not isinstance(tgts,Iterable):
 			raise TypeError("Targets must be Target or Point, or iterable collection of Target or Point objects")
 		else: 	
-			for target in targets:
+			for target in tgts:
 				if not isinstance(target,(Point,Target)):
 					raise TypeError("Targets must be Target or iterable collection of Target objects") 
 				if target not in lst:
-					if isinstance(target,Point)
-					lst.append(Target(point.x,point.y))
+					if isinstance(target,Point):
+						lst.append(Target(target.x,target.y))
+					else:
+						lst.append(target)
 
 	@property
 	def targets(self):
@@ -41,14 +51,15 @@ class Targets(collections.abc.Set):
 
 	@classmethod
 	def from_country(cls,country,N=50):
-		if not isintance(country,str):
+		if not isinstance(country,str):
 			raise TypeError("country argument must be string")
 		if not isinstance(N,(float,int)):
 			raise TypeError("N must be float or int")
 		elif N<1:
 			raise ValueError("N must be at least 1")
 		
-		fp = 'borders-simple/TM_WORLD_BORDERS_SIMPL-0.3.shp'
+
+		fp = fp_country
 		data = gpd.read_file(fp)
 		data = gpd.read_file(fp)
 
@@ -61,20 +72,19 @@ class Targets(collections.abc.Set):
 
 		points = []
 		for lat in lats:
-		    N = int(np.abs(NUM*np.cos(lat*np.pi/180)))
-		    lons = np.linspace(lon_min,lon_max,N)
+		    new_N = int(np.abs(N*np.cos(lat*np.pi/180)))
+		    lons = np.linspace(lon_min,lon_max,new_N)
 		    for lon in lons:
 		        points.append(Point(lon,lat))
-
-		        
+		
+        
 		candidate_points = gpd.GeoSeries(points)
 		inside_points = gpd.GeoSeries([point for point in candidate_points if point.within(cg.values[0])])
-
 		return cls(inside_points,tag=country)
 
 	@classmethod
 	def from_state(cls,state,N=50):
-		if not isintance(state,str):
+		if not isinstance(state,str):
 			raise TypeError("state argument must be string")
 		if not isinstance(N,(float,int)):
 			raise TypeError("N must be float or int")
@@ -82,24 +92,24 @@ class Targets(collections.abc.Set):
 			raise ValueError("N must be at least 1")
 
 		
-		fp = 'borders-states/ne_10m_admin_1_states_provinces.shp'
+		fp = fp_state
 		data = gpd.read_file(fp)
 		data = gpd.read_file(fp)
+
 
 		#TODO: Check all possible column keys where the string may be found
 
-		country_row = data.loc[data['name'] == country]
-		country_row['geometry']
-		cg = country_row['geometry'] 
+		state_row = data.loc[data['name'] == state]
+		state_row['geometry']
+		cg = state_row['geometry'] 
 
 		lon_min,lat_min,lon_max,lat_max = cg.total_bounds
 		
 		lats = np.linspace(lat_min,lat_max, N)
-
 		points = []
 		for lat in lats:
-		    N = int(np.abs(NUM*np.cos(lat*np.pi/180)))
-		    lons = np.linspace(lon_min,lon_max,N)
+		    new_N = int(np.abs(N*np.cos(lat*np.pi/180)))
+		    lons = np.linspace(lon_min,lon_max,new_N)
 		    for lon in lons:
 		        points.append(Point(lon,lat))
 
@@ -107,7 +117,7 @@ class Targets(collections.abc.Set):
 		candidate_points = gpd.GeoSeries(points)
 		inside_points = gpd.GeoSeries([point for point in candidate_points if point.within(cg.values[0])])
 
-		return cls(inside_points,tag=country)
+		return cls(inside_points,tag=state)
 
 	def plot(self, use_3d=False):
 		figure = plt.figure()
@@ -115,9 +125,10 @@ class Targets(collections.abc.Set):
 		y = [target.y for target in self.targets]
 		if use_3d:
 			centroid = [sum(x)/len(x), sum(y)/len(y)]
-
+			#TODO
+			raise NotImplemented
 		else: 	
-			plt.scatter(x,y,c='k',s='0.1')
+			plt.scatter(x,y,c='k',s=0.5)
 
 		return figure
 
@@ -143,7 +154,7 @@ class Target(object):
 
 	@property
 	def y(self):
-		return self._y
+		return self._lat
 	
 
 
