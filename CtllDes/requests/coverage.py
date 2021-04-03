@@ -276,18 +276,10 @@ class Coverage(object):
 		self._instr_id = instr_id 
 		self._T = T
 		self._dt = dt
+		
+		self._set_merit_figures()
 
 
-	def __add__(self,other):
-		if self.target != other.target:
-			raise ValueError("Targets must be equal")
-		elif self.T-other.T<TOL or self._dt-other.dt<TOL:
-			raise ValueError("T and dt must be equal")
-		elif len(self.cov) != len(other.cov):
-			raise ValueError("Tolerance may be ill-defined")
-		else:
-			new_cov = np.array(self.cov) | np.array(other.cov)
-			return Coverage(list(new_cov),self.target,self.T,self.dt)
 
 	@property
 	def cov(self):
@@ -306,26 +298,66 @@ class Coverage(object):
 		return self._dt
 	
 		
+	def _set_merit_figures(self):
+		self._accumulated = self._accum()
+		self._mean_gap_light = self._mean_gap(1)
+		self._mean_gap_dark = self._mean_gap(0)
+		
+		resp,avg,max_gap = self._resp_avg_max()
+		
+		self._response_time = resp
+		self._avg_time_gap = avg
+		self._max_gap = max_gap
 
-	#TODO: implement
 	@property
 	def accumulated(self):
-		"""Accumulated time of view in seconds"""
-		return self._accum()
-
-	def _accum(self):
-		return self.dt*sum(self.cov)
-
+		"""Accumulated time of view [s]"""
+		return self._accumalted*self.dt
 
 	@property
 	def mean_gap_light(self):
-		return self._mean_gap(1)
+		"""Mean gap time in view [s]"""
+		return self._mean_gap_light*self.dt
 
 	@property 
-	def mean_gap_dark(self)Ñ
-		return self._mean_gap(0)
+	def mean_gap_dark(self):
+		"""Mean gap time not in view [s]"""
+		return self._mean_gap_dark*self.dt
+
+	@property
+	def response_time(self):	
+		"""Average time to view target. This is
+		obtained by sampling the covs attribute
+		and calculating the time interval to next
+		view.
+	 	"""
+
+		return self._response_time*self.dt
+
+	@property
+	def avg_time_gap(self):
+		"""Average time of the dark gap. Is obtained
+		sampling randomly the covs, if it is a gap
+		it adds that gap_time. It repeats this a couple
+		of times and calculates the the mean [s].
+		"""
+
+		return self._avg_time_gap*self.dt
+
+	@property
+	def max_gap(self):
+		"""Maximum dark gap [s]"""
+		return self._max_gap*self.dt
+	
+
+	def _accum(self):
+		"""Integrated time of light (in view) [s]"""
+		return self.dt*sum(self.cov)
+
 
 	def _mean_gap(self,view):
+		"""Returns the mean gap in view."""
+
 		gap = 0 
 		switch = 0 
 		c_gap = 0
@@ -347,16 +379,19 @@ class Coverage(object):
 		else:
 			return gap*self.dt/c_gap	
 
-
 	
-	@property
-	def response_time(self):	
-		return self._resp_t()
 	
-	def _resp_t(self):
+	def _resp_avg_max(self):
+		"""Returns response time, average time gap, 
+		and max gap in seconds"""
+		
 		idx = []
 		resp_time = 0
+		time_gap = 0
 		gap = 0
+		switch = 0
+		max_gap = 0
+		N = len(self.cov)
 
 		for c in self.cov:
 			if switch == 0 and c == 0:
@@ -365,16 +400,29 @@ class Coverage(object):
 			elif switch == 1 and c != 0:
 				switch = 0
 				resp_time += (gap+1)*gap/2
+				time_gap += gap*gap
+				if gap > max_gap:
+					max_gap = gap
 				gap = 0
 			elif switch == 1 and c == 0:
 				gap += 1
 			elif switch == 0 and c != 0:
 				continue
 
-		return resp_time/len(self.cov)
+		return resp_time/N,time_gap/N,max_gap
 
-
-
+	
+		
+	def __add__(self,other):
+		if self.target != other.target:
+			raise ValueError("Targets must be equal")
+		elif self.T-other.T<TOL or self._dt-other.dt<TOL:
+			raise ValueError("T and dt must be equal")
+		elif len(self.cov) != len(other.cov):
+			raise ValueError("Tolerance may be ill-defined")
+		else:
+			new_cov = np.array(self.cov) | np.array(other.cov)
+			return Coverage(list(new_cov),self.target,self.T,self.dt)
 		
 
 	def plot_lapida(self, **kwargs):
