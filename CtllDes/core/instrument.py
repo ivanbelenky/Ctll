@@ -22,7 +22,11 @@ class Camera(Instrument):
 	
 	@cached_property
 	def FOV(self):
+
 		#TODO: calculate FOV from pixels and resol (maybe Ive missed an arguemnt)
+		#FOV must be set with units radians, units of astropy
+		#may fix this but is nice to be consistent.
+
 		return 0               
 	
 	def coverage(self):

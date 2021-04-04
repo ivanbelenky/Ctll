@@ -313,7 +313,7 @@ class Ctll(object):
 		Returns
 		-------
 		sspss : list
-			list of tuples (lat,long), lat and lon are Quantity 
+			list of tuples (lon,lat), lat and lon are Quantity 
 			objects array, size = floor(T*24*3600/dt)
 		
 		"""

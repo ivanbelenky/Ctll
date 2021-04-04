@@ -5,6 +5,7 @@ import numpy as np
 from shapely.geometry import Point
 import collections.abc
 from collections.abc import Iterable
+from astropy import units as u
 
 import os
 import sys
@@ -143,11 +144,20 @@ class Targets(collections.abc.Set):
 class Target(object):
 	""""""
 	def __init__(self,lon,lat):
-		""""""
-		self._lat = lat
-		self._lon = lon
+		"""Targets represents a point in a sphere surface, longitude
+		and latitude respectively. This values must be provided in 
+		degrees.
 
-	
+		Parameters
+		----------
+		lon : float | int
+			longitude 
+		lat : float | int
+			latitude 
+		 
+		"""
+		self._lat = lat 
+		self._lon = lon 
 
 	@property
 	def lat(self):
@@ -167,9 +177,13 @@ class Target(object):
 		return self._lat
 	
 	def __eq__(self, other):
-             if self.x-other.x < TOL and self.y-other.y < TOL:
-                  return True
-             else:
-             	return False
+		if self.x-other.x < TOL and self.y-other.y < TOL:
+			return True
+		else:
+			return False
 
-		
+	def __ne__(self,other):
+		if self.x-other.x > TOL or self.y-other.y < TOL:
+			return True
+		else:
+			return False

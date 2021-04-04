@@ -250,7 +250,7 @@ class Sat(object):
 		Returns
 		-------
 		sspss : list
-			list of tuples (lat,long), lat and lon are Quantity 
+			list of tuples (lon,lat), lat and lon are Quantity 
 			objects array, size = floor(T*24*3600/dt)
 		
 		Exactly and very near polar orbits interpolation results in domain error.
@@ -258,9 +258,9 @@ class Sat(object):
 		"""
 		
 		w = self.attractor.angular_velocity
-		lats,lons = self.Propagator.get_ssps(T,dt,w,method=propagation.cowell,**kwargs)
+		lons,lats = self.Propagator.get_ssps(T,dt,w,method=propagation.cowell,**kwargs)
 		
-		return lats,lons
+		return lons,lats
 
 	def update_instruments(self,instruments):
 		"""Updates satellite's insruments
@@ -493,9 +493,9 @@ class Propagator(object):
 		flats = interp1d(tofs,lats)
 		flons = interp1d(tofs,lons)
 		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
-		lats = flats(tofs)
-		lons = flons(tofs) % (2*np.pi)
+		lats = flats(tofs) * u.rad
+		lons = flons(tofs) % (2*np.pi) * u.rad
 		
-		return lats,lons
+		return lons,lats
 
 

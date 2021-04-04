@@ -13,10 +13,21 @@ TOL = 1**(-10)
 def isCovered(ssps,r,target,R,coverage_method):
 	"""The CoverageMethod, returns an arbitrary length tuple of
 	comparing functions. 
-
+	
 	Parameters
 	----------
-	
+	ssps : list
+		List of tuples (lon,lat) of subsatellite points [rad].
+	r : astropy.units.Quantity 
+		Satellite positions, distance Quantity
+	target : CtllDes.targets.targets.Target
+		Desired target of analysis
+	R : astropy.units.Quantity 
+		Mean radius of attractor
+	coverage_method : CtllDes.request.coverage.COV_METHODS
+		Coverage method grabbed from instruments ( # dont know yet, 
+		maybeduck typed _coverage)
+		
 
 	This functions must be such that their input
 	are, the sub satellite points, the position and the target in question. 
@@ -31,18 +42,32 @@ def isCovered(ssps,r,target,R,coverage_method):
 #list of built-in coverage methods
 
 def symmetric(FOV):
+	"""Circle of coverage centered on ssp"""
 	def _symmetric(ssps,r,target,R):
-		"""TODO docstring"""
-		radiis = np.sqrt(np.sum(a**2,axis=1))
+		
+		#HACK: there were 2 options, do this nasty thing here 
+		#or in targets.py I had to make that call.
+		t_lon = (target.x * u.deg).to(u.rad)
+		t_lat = (target.y * u.deg).to(u.rad)
+
+		radiis = np.sqrt(np.sum(r**2,axis=1))
 
 		rho = np.arcsin(R/radiis)*u.rad
     	eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
     	lam = (np.pi/2)*u.rad - FOV - eps
 
-		#TODO: missing math 
+		np_ssps = np.array(ssps)
+		s_lat_tgt = np.sin(t_lat)
+		c_lat_tgt = np.cos(t_lat)
+		s_lat_ssps = np.sin(np_ssps[:,1])
+		c_lat_ssps = np.cos(np_ssps[:,1])
+		c_lon_r = np.cos(t_lon-np_ssps[:,0])
+		a = np.arccos(s_lat_tgt*s_lat_ssps+
+			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
+
 
     	boolean = []
-    	for _ in angles:
+    	for _ in a:
     		if _ <= lam:
     			boolean.append(1)
     		else:
@@ -52,17 +77,30 @@ def symmetric(FOV):
     return _symmetric
 
 def symmetric_disk(FOV_max,FOV_min):
-	"""TODO docstring"""
-	def _symmetric_disk(ssps,r,target,R)
+	"""Disk of coverage centered on ssp"""
+		def _symmetric_disk(ssps,r,target,R)
+		
+		#HACK: there were 2 options, do this nasty thing here 
+		#or in targets.py I had to make that call.
+		t_lon = (target.x * u.deg).to(u.rad)
+		t_lat = (target.y * u.deg).to(u.rad)
+
 		radiis = np.sqrt(np.sum(a**2,axis=1))
 
 		rho = np.arcsin(R/radiis)*u.rad
     	eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
     	lam_min = (np.pi/2)*u.rad - FOV_min - eps
     	lam_max = (np.pi/2)*u.rad - FOV_max - eps
+		
+		np_ssps = np.array(ssps)
+		s_lat_tgt = np.sin(t_lat)
+		c_lat_tgt = np.cos(t_lat)
+		s_lat_ssps = np.sin(np_ssps[:,1])
+		c_lat_ssps = np.cos(np_ssps[:,1])
+		c_lon_r = np.cos(t_lon-np_ssps[:,0])
+		a = np.arccos(s_lat_tgt*s_lat_ssps+
+			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
     	
-		#TODO: missing math 
-
     	boolean = []
     	for _ in angles:
     		if  lam_min <= _ <= lam_max:
@@ -76,16 +114,20 @@ def symmetric_disk(FOV_max,FOV_min):
 
 
 
-
+#TODO: implement
 def symmetric_with_roll():
 	pass
 
 
 
-COVERAGE_COMPARING_METHODS = [symmetric, symmetric_disk, symmetric_with_roll]
+COV_METHODS = [symmetric, symmetric_disk, symmetric_with_roll]
 
 
 class Coverages(collections.abc.Set):
+	"""Container for Coverage objects. Frame where you can 
+	get all the data from the coverage analysis. It is meant
+	to be created with the classmethods. 
+	"""
 		def __init__(self,covs,tag=None):
 		self._covs = lst = list()
 		self._tag = tag if tag else "No Tag"
@@ -262,7 +304,10 @@ class Coverages(collections.abc.Set):
 		
 
 class Coverage(object):
-	#TODO: docstring
+	"""Coverage is the main class of coverages.py, composed 
+	of the data needed to make all the desired analysis in order to get the 
+	merit figures for a specific target, during a time of flight.
+	"""
 	
 	def __init__(self,
 		cov,
@@ -271,12 +316,29 @@ class Coverage(object):
 		dt,
 		instr_id=None,
 	):
+		"""Constructor for Coverage
+		
+		Parameters
+		----------
+		cov : Iterable
+			Iterable collection of 1 or 0 values representing
+			view and not in view.
+		target : CtllDes.targets.targets.Target
+			Target related to cov collection.
+		T : float | int
+			Time of flight in days
+		dt : float | int
+			time interval in seconds
+		instr_id : uuid.UUID, optional
+			Instrument id related to the cov collection.
+		"""
+
 		self._cov = cov
 		self._target = target
 		self._instr_id = instr_id 
 		self._T = T
 		self._dt = dt
-		
+
 		self._set_merit_figures()
 
 
@@ -412,7 +474,7 @@ class Coverage(object):
 		return resp_time/N,time_gap/N,max_gap
 
 	
-		
+
 	def __add__(self,other):
 		if self.target != other.target:
 			raise ValueError("Targets must be equal")
