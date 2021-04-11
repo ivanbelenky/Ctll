@@ -202,8 +202,8 @@ class Ctll(object):
 		ecc,
 		inc,
 		argp,
-		raans_offset = 0*u.deg,
-		nus_offset = 0*u.deg,
+		raan_offset = 0*u.deg,
+		nu_offset = 0*u.deg,
 		statuss=None,
 		specs=None,
 		instrumentss=None,
@@ -238,9 +238,9 @@ class Ctll(object):
 		    Inclination
 		argp : ~astropy.units.Quantity, optional
 		    Argument of the pericenter.
-		raans_offset : ~astropy.units.Quantity
+		raan_offset : ~astropy.units.Quantity
 			right ascension of the ascending node offset
-		nus_offset : ~astropy.units.Quantity, optional
+		nu_offset : ~astropy.units.Quantity, optional
 			True anomaly offset
 		statuss : list
 			list of SAT_STATUS strings, one for each sat  

@@ -292,34 +292,7 @@ class Coverages(collections.abc.Set):
 		return sat_coverages
 		
 
-	
-	def filter_by_target(self,target):
-		"""Obtain coverages filtered by target
 		
-		Parameters
-		----------
-		target : CtllDes.targets.targets.Target		
-		"""
-		lst = [cov for cov in self.covs if cov.target == target]
-		if not len(lst):
-			print(f"{target} not found in coverages")
-		else:
-			return Coverages(lst,tag=f"{self.tag} filtered by target = {target}")
-		
-	def filter_by_instrument(self,instr_id):
-		"""Obtain coverages filtered by instrument_id
-		
-		Parameters
-		----------
-		instr_id : UUID
-			desired instrument id to filter out
-		"""
-		lst = [cov for cov in self.covs if cov.id == instr_id]
-		if not len(lst):
-			print(f"Instrument with ID : {instr_id} not found")
-		else:
-			return Coverages(lst,tag=f"{self.tag} filtered by target = {instr_id}")
-
 	def collapse_instruments(self):
 		"""Obtain coverages regardless of instrument.
 
