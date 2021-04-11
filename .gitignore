@@ -4,3 +4,4 @@ Pipfile.lock
 Pipfile
 .ipynb_checkpoints/**
 
+.ipynb_checkpoints
