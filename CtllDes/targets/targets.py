@@ -52,8 +52,13 @@ class Targets(collections.abc.Set):
 		return value in self.targets
 
 	def __len__(self):
-		len(self.elements)
+		return len(self.targets)
 
+	@property
+	def coords(self):
+		lst = np.array([[target.x,target.y] for target in self.targets])
+		return lst
+	
 
 	@classmethod
 	def from_country(cls,country,N=50):

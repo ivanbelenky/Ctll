@@ -1,7 +1,10 @@
-from ..core import ctll, Instrument, sat
+from ..core import ctll, satellite, instrument
 import collections.abc
 from collections.abc import Iterable
+from astropy import units as u
 
+import numpy as np
+import pandas as pd
 
 try:
     from functools import cached_property  # type: ignore
@@ -10,14 +13,16 @@ except ImportError:
 
 TOL = 1**(-10)
 
-def isCovered(ssps,r,target,R,coverage_method):
+def isCovered(lons,lats,r,target,R,coverage_method):
 	"""The CoverageMethod, returns an arbitrary length tuple of
 	comparing functions. 
 	
 	Parameters
 	----------
-	ssps : list
-		List of tuples (lon,lat) of subsatellite points [rad].
+	lons : ~astropy.units.Quantity
+		Quantity array of longitudes for subsatellite points [rad].
+	lats : ~astropy.units.Quantity
+		Quantity array of latitudes for subsatellite points [rad].
 	r : astropy.units.Quantity 
 		Satellite positions, distance Quantity
 	target : CtllDes.targets.targets.Target
@@ -33,52 +38,53 @@ def isCovered(ssps,r,target,R,coverage_method):
 	are, the sub satellite points, the position and the target in question. 
 	It returns a list the same length of subsatellite points  """
 
-	outputs = np.array(coverage_method(ssps,r,target,R))
+	#cov = np.array(coverage_method(lons,lats,r,target,R))
+	
 	#column-wise multiplication, checks all requirements.
-	cov = [ np.prod(outputs[:,i]) for i in outputs.shape[0] ]
-	return cov	
+	#cov = [ np.prod(outputs[:,i]) for i in outputs.shape[0] ]
+	
+	return coverage_method(lons,lats,r,target,R)
 
 
 #list of built-in coverage methods
 
 def symmetric(FOV):
 	"""Circle of coverage centered on ssp"""
-	def _symmetric(ssps,r,target,R):
+	def _symmetric(lons,lats,r,target,R):
 		
 		#HACK: there were 2 options, do this nasty thing here 
 		#or in targets.py I had to make that call.
+		
 		t_lon = (target.x * u.deg).to(u.rad)
 		t_lat = (target.y * u.deg).to(u.rad)
-
 		radiis = np.sqrt(np.sum(r**2,axis=1))
 
-		rho = np.arcsin(R/radiis)*u.rad
-    	eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
-    	lam = (np.pi/2)*u.rad - FOV - eps
+		rho = np.arcsin(R/radiis)
+		eps = np.arccos((np.sin(FOV))/(np.sin(rho)))
 
-		np_ssps = np.array(ssps)
+		lams = (np.pi/2)*u.rad - FOV - eps
+
 		s_lat_tgt = np.sin(t_lat)
 		c_lat_tgt = np.cos(t_lat)
-		s_lat_ssps = np.sin(np_ssps[:,1])
-		c_lat_ssps = np.cos(np_ssps[:,1])
-		c_lon_r = np.cos(t_lon-np_ssps[:,0])
-		a = np.arccos(s_lat_tgt*s_lat_ssps+
+		s_lat_ssps = np.sin(lats)
+		c_lat_ssps = np.cos(lats)
+		c_lon_r = np.cos(t_lon-lons)
+		angles = np.arccos(s_lat_tgt*s_lat_ssps+
 			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
 
+		cov = []
+		for angle,lam in zip(angles,lams):
+			if angle <= lam:
+				cov.append(1)
+			else:
+				cov.append(0)
+		return cov
 
-    	boolean = []
-    	for _ in a:
-    		if _ <= lam:
-    			boolean.append(1)
-    		else:
-    			boolean.append(0)
-    	return boolean
-
-    return _symmetric
+	return _symmetric
 
 def symmetric_disk(FOV_max,FOV_min):
 	"""Disk of coverage centered on ssp"""
-		def _symmetric_disk(ssps,r,target,R)
+	def _symmetric_disk(ssps,r,target,R):
 		
 		#HACK: there were 2 options, do this nasty thing here 
 		#or in targets.py I had to make that call.
@@ -88,9 +94,9 @@ def symmetric_disk(FOV_max,FOV_min):
 		radiis = np.sqrt(np.sum(a**2,axis=1))
 
 		rho = np.arcsin(R/radiis)*u.rad
-    	eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
-    	lam_min = (np.pi/2)*u.rad - FOV_min - eps
-    	lam_max = (np.pi/2)*u.rad - FOV_max - eps
+		eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
+		lam_min = (np.pi/2)*u.rad - FOV_min - eps
+		lam_max = (np.pi/2)*u.rad - FOV_max - eps
 		
 		np_ssps = np.array(ssps)
 		s_lat_tgt = np.sin(t_lat)
@@ -100,17 +106,17 @@ def symmetric_disk(FOV_max,FOV_min):
 		c_lon_r = np.cos(t_lon-np_ssps[:,0])
 		a = np.arccos(s_lat_tgt*s_lat_ssps+
 			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
-    	
-    	boolean = []
-    	for _ in angles:
-    		if  lam_min <= _ <= lam_max:
-    			boolean.append(1)
-    		else:
-    			boolean.append(0)
-    	
-    	return boolean
+		
+		boolean = []
+		for _ in angles:
+			if  lam_min <= _ <= lam_max:
+				boolean.append(1)
+			else:
+				boolean.append(0)
+		
+		return boolean
 
-    return _symmetric_disk
+	return _symmetric_disk
 
 
 
@@ -128,7 +134,7 @@ class Coverages(collections.abc.Set):
 	get all the data from the coverage analysis. It is meant
 	to be created with the classmethods. 
 	"""
-		def __init__(self,covs,tag=None):
+	def __init__(self,covs,tag=None):
 		self._covs = lst = list()
 		self._tag = tag if tag else "No Tag"
 
@@ -141,14 +147,19 @@ class Coverages(collections.abc.Set):
 				if not isinstance(cov,Coverage):
 					raise TypeError("covs must be a collection of Coverage objects") 
 				if cov not in lst:
-					lst.append()
+					lst.append(cov)
 
-		self._targets = {cov.target for cov in self.covs}
+		self._targets = {(covv.target.lon,covv.target.lat) for covv in self.covs}
 
 	@property
 	def covs(self):
 		return self._covs
 	
+	@property
+	def targets(self):
+		return self._targets
+	
+
 	def __iter__(self):
 		return iter(self.covs)
 
@@ -161,15 +172,43 @@ class Coverages(collections.abc.Set):
 	def __str__(self):
 		return self.tag
 
+	#TODO: how to create dataframes in python.
+	def to_df(self):		
+		"""Returns dataframe with all the merit figures
+		form the Coverage contained.
 
-	@cached_property
-	def data(self):
-		return self.to_data()
-		#TODO: check if it is worth doing named tuple or other thing
+		"""
 
+		df = pd.DataFrame(columns=['T',
+									'dt',
+									'Instrument ID',
+									'Target',
+									'accumulated',
+									'mean gap light',
+									'mean gap dark',
+									'response time',
+									'time gap',
+									'average time gap',
+                          			'max gap'])
+
+		data = [{'T': cov.T,
+				'dt': cov.dt,
+				'Instrument ID': cov.instr_id, 
+	        	'Target':(cov.target.lon,cov.target.lat),
+    	    	'accumulated': cov.accumulated,
+        		'mean gap light': cov.mean_gap_light,
+       			'mean gap dark': cov.mean_gap_dark,
+        		'response time': cov.response_time,
+        		'average time gap': cov.avg_time_gap,
+        		'max gap': cov.max_gap} for cov in self.covs]
+
+		df = df.append(data,ignore_index=True)
+
+		return df
+		
 
 	@classmethod
-	def from_ctll(cls,ctll,targets,T,dt):
+	def from_ctll(cls,ctll,targets,T,dt=1.):
 		"""Get coverages from constellation.
 		
 		Parameters
@@ -192,22 +231,23 @@ class Coverages(collections.abc.Set):
 		"""
 
 		ctll_covs = []
-		for sats in ctll.sats:
+		for sat in ctll.sats:
 			try:
 				sat_covs = Coverages.from_sat(sat,targets,T,dt)
-			except Exception:
+			except Exception as e:
+				print(e)
 				pass
 			else:
-				ctll_covs += (sat_covs)
+				ctll_covs += sat_covs
 
-		if not len(Coverages): 
+		if not len(ctll_covs): 
 			raise Exception("Constellation has no Coverage Instruments")
 
 		return Coverages(ctll_covs,tag=ctll.__str__())
 
 
 	@classmethod
-	def from_sat(sat, targets,T, dt=1.):
+	def from_sat(cls,sat, targets,T, dt=1.):
 		"""Build list of coverage objects from satellite
 	
 		Parameters
@@ -230,20 +270,25 @@ class Coverages(collections.abc.Set):
 		"""
 
 
-		cov_instruments = [sat.instr for instr in sat.cov_instruments]
+		cov_instruments = [instr for instr in sat.cov_instruments]
 		if not len(cov_instruments):
 			raise Exception("No coverage instruments found on" +
 				f" satID : {sat.id}")	
 
-		ssps = sat.ssps(T,dt)
+		lons,lats = sat.ssps(T,dt)
 		r,v = sat.rv(T,dt)
 
+
+		total = len(cov_instruments)*len(targets)
+		count=1
+	
 		sat_coverages = []
 		for instr in cov_instruments:
 			for target in targets:
-				cov = isCovered(ssps,r,target,sat.attractor.R_mean,instr.coverage())
+				cov = isCovered(lons,lats,r,target,sat.attractor.R_mean,instr.coverage())
 				sat_coverages.append(Coverage(cov,target,T,dt,instr.id))
-
+				print(f'target {target.x}° {target.y}°. {count} of {total}')
+				count += 1
 		return sat_coverages
 		
 
@@ -284,6 +329,7 @@ class Coverages(collections.abc.Set):
 			Coverages object with Covs merged for target
 
 		"""
+		#TODO: ive changed the self.targets, now is broken as fuck
 		tgts = self.targets
 		cov_tgt = [[] for tgt in tgts]
 		for cov in self.covs:
@@ -346,6 +392,11 @@ class Coverage(object):
 	@property
 	def cov(self):
 		return self._cov
+
+	@property
+	def instr_id(self):
+		return self._instr_id
+	
 	
 	@property
 	def target(self):
@@ -374,7 +425,7 @@ class Coverage(object):
 	@property
 	def accumulated(self):
 		"""Accumulated time of view [s]"""
-		return self._accumalted*self.dt
+		return self._accumulated*self.dt
 
 	@property
 	def mean_gap_light(self):

@@ -17,7 +17,7 @@ from ..utils import trigsf
 import uuid
 import numpy as np
 from scipy.interpolate import interp1d
-
+import time 
 
 SAT_ST = {
 	"On":'Online',
@@ -25,7 +25,7 @@ SAT_ST = {
 }
 
 
-PROPAGATOR_DT = 50
+PROPAGATOR_DT = 100
 
 class Sat(object):
 
@@ -53,6 +53,7 @@ class Sat(object):
 			List of Instrument objects
 
 		"""
+		
 		self.state = state
 		self.status = status
 		self.spec = spec if spec else Specifications()
@@ -61,7 +62,7 @@ class Sat(object):
 
 		if not instruments:
 			self.instruments = []
-		elif not isinstance(isntrumentss,list):
+		elif not isinstance(instruments,list):
 			self.instruments = [instruments]
 		else:
 			self.instruments = instruments
@@ -69,8 +70,10 @@ class Sat(object):
 
 		self._id = uuid.uuid4()
 		self._orbit = Orbit(state,epoch)
+		
 		self._Propagator = Propagator(self.orbit)
-
+		
+		
 	@property
 	def state(self):
 		return self._state
@@ -106,7 +109,7 @@ class Sat(object):
 
 	@property
 	def instruments(self):
-		return self._isntruments
+		return self._instruments
 
 	@instruments.setter
 	def instruments(self,instruments):
@@ -147,8 +150,8 @@ class Sat(object):
 	@property
 	def cov_instruments(self):
 		covInstr = [instr for instr in self.instruments
-		if "_coverage" in set(dir(instr))]
-		return self.covInstr
+		if 'coverage' in set(dir(instr))]
+		return covInstr
 	
 	
 	
@@ -216,7 +219,7 @@ class Sat(object):
 		return Sat.from_orbit(orbit,status,spec,instruments)
 
 
-	def rv(self,T,dt=1.,method=propagation.cowell,**kwargs):
+	def rv(self,T,dt=1.,method=propagation.farnocchia,**kwargs):
 		""" Propagates orbit, T days of flight.
 		
 		Parameters
@@ -233,11 +236,13 @@ class Sat(object):
 			objects array, size=floor(T*24*3600/dt)
 		
 		"""
+		
 		rr,vv = self.Propagator.get_rv(T,dt,method,**kwargs)
+		
 
 		return rr,vv
 
-	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
+	def ssps(self,T,dt=1.,method=propagation.farnocchia,**kwargs):
 		""" Get subsatellite points, T days of flight.
 
 		Parameters
@@ -258,7 +263,7 @@ class Sat(object):
 		"""
 		
 		w = self.attractor.angular_velocity
-		lons,lats = self.Propagator.get_ssps(T,dt,w,method=propagation.cowell,**kwargs)
+		lons,lats = self.Propagator.get_ssps(T,dt,w,method=propagation.farnocchia,**kwargs)
 		
 		return lons,lats
 
@@ -297,12 +302,13 @@ class Propagator(object):
 	def __init__(
 		self,
 		orbit,
-	 	T = 1,
-	 	method = propagation.cowell,	   
+	 	T = 10,
+	 	method = propagation.farnocchia,	   
 		**kwargs
 	):
 		
 		"""Propagator object builder. Build coordinates"""
+		
 		self._DT = PROPAGATOR_DT 
 
 
@@ -314,7 +320,7 @@ class Propagator(object):
 
 		self._tofs = None
 		self._setcoords()
-		
+
 
 		#hardsetted to optimize performance on interpolation
 
@@ -353,8 +359,9 @@ class Propagator(object):
 	
 	@method.setter
 	def method(self,method):
-		if method.func_name not in propagation.ALL_PROPAGATORS:
+		if method not in propagation.ALL_PROPAGATORS:
 			raise Exception("Unknown propagation method") 
+		self._method = method
 
 
 	@property
@@ -384,15 +391,17 @@ class Propagator(object):
 		timeframe or perturbative force.
 		"""
 
-
 		self.tofs = TimeDelta(np.linspace(0,self.T*24*3600*u.s,
 		 num=int(self.T*24*3600/self._DT)))
 		
+
 		self._coords = propagation.propagate(self.orbit,
 			self.tofs,method=self.method,**self.kwargs)
+		
 
 
-	def get_rv(self,T,dt=1.,method=propagation.cowell,**kwargs):
+
+	def get_rv(self,T,dt=1.,method=propagation.farnocchia,**kwargs):
 
 		"""Get position and velocity for specified Time of flight
 		
@@ -403,7 +412,7 @@ class Propagator(object):
 		dt : float, optional
 			time interval between interpolation. 
 		method : callable, optional
-			Propagation method, default to cowell.
+			Propagation method, default to farnocchia.
 
 		Returns
 		-------
@@ -447,13 +456,13 @@ class Propagator(object):
 
 		tofs = TimeDelta(np.linspace(0, T*24*3600*u.s, num=int(T*24*3600/dt)))
 
-
+		
 		ephemerides = ephem.Ephem(self.coords,self.tofs, Planes.EARTH_EQUATOR)
 		
 		return ephemerides.rv(tofs)
 	
 
-	def get_ssps(self,T,dt,w,method=propagation.cowell,**kwargs):
+	def get_ssps(self,T,dt,w,method=propagation.farnocchia,**kwargs):
 		"""Return subsatellite points"""
 
 		flag = False
@@ -473,7 +482,6 @@ class Propagator(object):
 
 		ephemerides = ephem.Ephem(self.coords,self.tofs, Planes.EARTH_EQUATOR)
 		rr,vv = ephemerides.rv()
-		print("le shape is ", rr.shape)
 		rs,lats,lons = trigsf.c2s(rr[:,0].value, rr[:,1].value, rr[:,2].value)
 
 		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/self._DT))

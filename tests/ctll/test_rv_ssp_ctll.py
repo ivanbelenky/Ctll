@@ -7,8 +7,10 @@ from astropy import units as u
 from poliastro.twobody import states as st
 from poliastro.bodies import Earth, Mars, Sun
 from poliastro.frames import Planes
+from poliastro.twobody import propagation,Orbit
 
 
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import tkinter
@@ -30,7 +32,11 @@ plane = Planes.EARTH_EQUATOR
 pi = np.pi
 
 def test_rv_ctll():
+	r = np.array([-2384.46, 5729.01, 3050.46]) * u.km
+	v = np.array([-7.36138, -2.98997, 1.64354]) * u.km / u.s
 
+	orbit = Orbit.from_vectors(Earth, r, v)
+	a=satellite.Propagator(orbit,T=0.1)
 
 	#constellation
 	T = 10
@@ -38,23 +44,24 @@ def test_rv_ctll():
 	F = 0
 	p2 = p * u.km
 	constellation = ctll.Ctll.from_WalkerDelta(T,P,F,p,ecc,inc,argp)
-	constellation.info(v=True)
+	#constellation.info(v=True)
 
-	rv = constellation.rv(6)
+	
+	rv = constellation.rv(9,dt=1,method=propagation.farnocchia)
+	
+	
+	# for rrvv in rv:
+	# 	print("\nr:\n",rrvv[0])
+	# 	print("\nv:\n",rrvv[1])
 
-	for rrvv in rv:
-		print("\nr:\n",rrvv[0])
-		print("\nv:\n",rrvv[1])
 
-	print(type(rv[0]))
+	# fig = plt.figure()
+	# ax = fig.add_subplot(111, projection='3d')
 
-	fig= plt.figure()
-	ax = fig.add_subplot(111, projection='3d')
-
-	ax.scatter(0,0,0,zdir='z',s=10,c='r')
-	for rrvv in rv:
-		ax.plot(rrvv[0][::100,0],rrvv[0][::100,1],rrvv[0][::100,2],zdir='z',c='k')
-	plt.show()
+	# ax.scatter(0,0,0,zdir='z',s=10,c='r')
+	# for rrvv in rv:
+	# 	ax.plot(rrvv[0][::100,0],rrvv[0][::100,1],rrvv[0][::100,2],zdir='z',c='k')
+	# plt.show()
 
 def test_ssps_ctll():
 

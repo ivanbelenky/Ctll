@@ -5,9 +5,12 @@ from poliastro.constants import J2000
 from poliastro.frames import Planes
 from astropy.time import Time, TimeDelta
 
-
+import pandas as pd
 import numpy as np
 from astropy import time, units as u
+import time
+import copy
+
 
 
 from .satellite import Sat, SAT_ST 
@@ -70,6 +73,7 @@ class Ctll(object):
 	
 	@states.setter
 	def states(self,statess):
+		#TODO: chheckk that all states attractor is the same one.
 		if not isinstance(statess,list):
 			raise Exception("States must be a list")  
 		elif len(statess) == 0:
@@ -81,8 +85,6 @@ class Ctll(object):
 		return self._statuss
 
 	
-	#TODO: implement warning control, check if this lists are valid
-	#this is just a patch to initialize without giving instruments and sepcs
 	#lists. Maybe a way is to incorporate in the Instruments module and the specs
 	#and status one, a generator for N satellites with one state.
 
@@ -138,7 +140,8 @@ class Ctll(object):
 			raise Exception("Satellites instruments must be a list or Instrument object")
 		
 		if isinstance(instrumentss,Instrument):
-			instrumentss = [instrumentss for _ in range(self.N)]
+			instrumentss = [ instrumentss for _ in range(self.N)]
+			#TODO: check the implications of this hackerino, nasty it is.
 
 		N_instr = len(instrumentss) 
 		
@@ -199,7 +202,8 @@ class Ctll(object):
 		ecc,
 		inc,
 		argp,
-		raans_offset = 0,
+		raans_offset = 0*u.deg,
+		nus_offset = 0*u.deg,
 		statuss=None,
 		specs=None,
 		instrumentss=None,
@@ -232,8 +236,12 @@ class Ctll(object):
 		    Eccentricity.
 		inc : ~astropy.units.Quantity
 		    Inclination
-		argp : ~astropy.units.Quantity
+		argp : ~astropy.units.Quantity, optional
 		    Argument of the pericenter.
+		raans_offset : ~astropy.units.Quantity
+			right ascension of the ascending node offset
+		nus_offset : ~astropy.units.Quantity, optional
+			True anomaly offset
 		statuss : list
 			list of SAT_STATUS strings, one for each sat  
 		epoch : ~astropy.time.Time, optional
@@ -243,14 +251,18 @@ class Ctll(object):
 		
 		Note
 		----	
-		raan and nu are omitted since TPF determines them
+		raan and nu are omitted since TPF determines them unless
+		the offset is granted. This values force the ctll to pass
+		over those points at least one time, at the beggining of 
+		the orbit. 
 
 		"""	
+		
 		S = T/P
 		
 		raans = [raans_offset+int(j/S)*360*u.deg/P for j in range(T)]
 		
-		nus = [(j%S)*360*u.deg/S+int(j/S)*360*u.deg*F/T 
+		nus = [(j%S)*360*u.deg/S+int(j/S)*360*u.deg*F/T +nus_offset
 		for j in range(T)
 		]
 
@@ -324,7 +336,13 @@ class Ctll(object):
 		return sspss
 
 	def __str__(self):
-		return f"{self.patt['N']} satellites within {patt['PAT']}"
+		
+		string = ""
+		for pat in self.pattern:
+			string += f"{pat['N']} satellites within {pat['PAT']}\n"
+		
+		return string
+
 
 	def __add__(self, other):
 		if isinstance(other, __class__):
@@ -341,7 +359,7 @@ class Ctll(object):
 		else:
 			raise TypeError("Invalid types")
 
-		
+	#TODO: check if it works or if is neccesary
 	def get_sat(self,uuid):
 		"""Get satellite by uuid
 		
@@ -357,7 +375,7 @@ class Ctll(object):
 				return sat
 		raise Exception("Satellite not found")
 
-
+	#TODO: check if it works or if is neccesary
 	def update_status(self,newStatuss):
 		"""Updates ctll sats status.
 		
@@ -370,7 +388,9 @@ class Ctll(object):
 		self.statuss = newStatuss 
 		for sat,status in zip(self.sats,newStatuss):
 			sat.UpdateStatus(status)
+	
 
+	#TODO: check if it works or if is neccesary 
 	def update_specs(self,newSpecs):
 		"""Updates ctll sats specifications.
 		
@@ -384,6 +404,7 @@ class Ctll(object):
 		for sat,spec in zip(self.sats,newSpecs):
 			sat.update_spec(spec)
 
+	#TODO: check if it works or if is neccesary
 	def update_instruments(self,newInstr):
 		"""Updates ctll sats Instruments.
 		
