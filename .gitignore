@@ -6,4 +6,5 @@ Pipfile
 
 .ipynb_checkpoints
 .ipynb_checkpoints
-notebooks/
+notebooks/**
+
