@@ -1,9 +1,11 @@
 
+from astropy import units as u
+
 
 DefaultSpec = {
-	"m":1,
-	"Cd":1,
-	"A_over_m":1
+	"m":1*u.kg,
+	"Cd":1*u.one,
+	"A":1*u.m*u.m
 }
 
 class Specifications(object):
@@ -12,14 +14,16 @@ class Specifications(object):
 		self,
 		m=DefaultSpec["m"],
 		Cd=DefaultSpec["Cd"],
-		A_over_m=DefaultSpec["A_over_m"],
+		A=DefaultSpec["A"],
 		#args for self calculation of drag coefficient
 	):
 
 		self._m = m
 		self._Cd = Cd
-		self._A_over_m = A_over_m
+		self._A = A
+		self._A_over_m = self.A/self.m
 	
+
 	@property
 	def m(self):
 		return self._m
@@ -29,9 +33,18 @@ class Specifications(object):
 		return self._Cd
 	
 	@property
+	def A(self):
+		return self._A
+
+	@property
 	def A_over_m(self):
 		return self._A_over_m
+
 	
+	
+
+	def __str__(self):
+		return f" m:{self.m}, Cd:{self.Cd}, A:{self.A}"
 
 
 

@@ -1,6 +1,11 @@
 import math
 import numpy as np
-from .. import units as u
+import pandas as pd
+
+from . import units as u
+
+from astropy import units 
+
 
 """Calculador de los parámetros orbitales para los tiempos de revisita deseados.
 
@@ -31,7 +36,7 @@ u.J_4*((u.R_e/a)**4)*( (15/2) - (465/16)*(math.sin(i)**2) + (735/32)*(math.sin(i
 
 #Funcion principal para obtención de parámetros orbitales en una órbita circular.
 
-def get_a_i_N(D):
+def helio_rgt_synchronous(D):
     """
     Calcula los parametros de las posibles orbitas SS dado los dias de revisita 
     Recibe: D dias de revisita 
@@ -74,7 +79,22 @@ def get_a_i_N(D):
         i_.append(i_sig)
         a_.append(a_0)
         
-    return np.array(a_), np.array(i_), np.array(N_)
+        data = [{'radius':rad/1000*units.km,
+                'inc':inc*180/np.pi*units.deg,
+                'N':rev*1/units.s
+        } for rad,inc,rev in zip(a_,i_,N_)]
+
+        rad_data = [rad/1000 for rad in a_]*units.km
+        inc_data = [inc*180/np.pi for inc in i_]*units.deg
+        N_data = [rev for rev in N_]*1/units.s
+
+        #df = pd.DataFrame(data=data,columns=['radius','inc','N'])
+        df = pd.DataFrame()
+        df['radius'] = rad_data
+        df['inc'] = inc_data
+        df['N'] = N_data
+
+    return df
 
 
 

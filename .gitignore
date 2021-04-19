@@ -3,5 +3,4 @@ pyvenv.cfg
 Pipfile.lock
 Pipfile
 .ipynb_checkpoints
-notebooks/**
 *.ipynb

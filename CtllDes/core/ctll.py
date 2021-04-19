@@ -28,9 +28,9 @@ class Ctll(object):
 	def __init__(
 		self,
 		states,
-		statuss=None,
+		status=None,
 		specs=None,
-		instrumentss=None,
+		instruments=None,
 		pattern=None,
 		epoch=J2000,		
 	):
@@ -43,22 +43,22 @@ class Ctll(object):
 			list of poliastro.twobody.states BaseState objects childs
 		states : list
 			list of ~poliastro.twobody.states.BaseState childs
-		statuss : list, optional
+		status : list, optional
 			list of SAT_STATUS strings, one for each sat 
 		specs : list, optional
 			list of satellite spec objects 
 		epoch : ~astropy.time.Time, optional
 		    Epoch, default to J2000.
-		instrumentss : list,optional
+		instruments : list,optional
 			list of lists of instruments, sublist for each sat
 		pattern : string 
 			Pattern Type for constellation, pattern must be in PAT
 
 		"""
 		self._states = states
-		self.statuss = statuss if statuss else []
+		self.status = status if status else []
 		self.specs = specs if specs else []
-		self.instrumentss = instrumentss if instrumentss else []
+		self.instruments = instruments if instruments else []
 		self._pattern = pattern if pattern \
 		else [{"PAT":PAT['NP'], "N":self.N}]
 
@@ -81,35 +81,44 @@ class Ctll(object):
 		self._statess = statess
 
 	@property
-	def statuss(self):
-		return self._statuss
+	def status(self):
+		try:
+			a = [sat.status for sat in self.sats]
+			return a
+		except:
+			return self._status
 
 	
 	#lists. Maybe a way is to incorporate in the Instruments module and the specs
 	#and status one, a generator for N satellites with one state.
 
-	@statuss.setter
-	def statuss(self,arg):
+	@status.setter
+	def status(self,arg):
 		if not isinstance(arg,list):
 			raise Exception("Satellite status must be a list")
 		
-		N_statuss = len(arg)
+		N_status = len(arg)
 
-		if N_statuss < self.N and N_statuss != 0:
-			arg.append([SAT_ST["On"] for _ in range(self.N-N_statuss)])
+		if N_status < self.N and N_status != 0:
+			arg += [SAT_ST["On"] for _ in range(self.N-N_status)]
 			print("Not enought status, for remainining status ONLINE was used")
-			self._statuss = arg
-		elif N_statuss > self.N:
+			self._status = arg
+		elif N_status > self.N:
 			print("Too many status, list has been sliced")
-			self._statuss = arg[:self.N] 
-		elif N_statuss == 0:
-			self._statuss = [SAT_ST["On"] for _ in range(self.N)]
+			self._status = arg[:self.N] 
+		elif N_status == 0:
+			self._status = [SAT_ST["On"] for _ in range(self.N)]
 		else:
-			self._statuss = arg
+			self._status = arg
 
 	@property
 	def specs(self):	
-		return self._specs
+		try:
+			a = [sat.spec for sat in self.sats]
+			return a
+		except:
+			return self._specs
+		
 	
 	@specs.setter
 	def specs(self,specs):
@@ -119,7 +128,7 @@ class Ctll(object):
 		N_specs = len(specs)
 
 		if N_specs < self.N and N_specs > 0:
-			specs.append([Specifications() for _ in range(self.N-N_specs)])
+			specs += [Specifications() for _ in range(self.N-N_specs)]
 			print("Not enought specifications, for remainining specs.default was used")
 			self._specs = specs
 		elif N_specs > self.N:
@@ -131,31 +140,36 @@ class Ctll(object):
 			self._specs = specs
 
 	@property
-	def instrumentss(self):
-		return self._instrumentss
-	
-	@instrumentss.setter
-	def instrumentss(self,instrumentss):
-		if not isinstance(instrumentss,list) and not isinstance(instrumentss,Instrument):
+	def instruments(self):
+		try:
+			a = [sat.instruments for sat in self.sats]
+			return a
+		except:
+			return self._instruments
+		
+		
+	@instruments.setter
+	def instruments(self,instruments):
+		if not isinstance(instruments,list) and not isinstance(instruments,Instrument):
 			raise Exception("Satellites instruments must be a list or Instrument object")
 		
-		if isinstance(instrumentss,Instrument):
-			instrumentss = [ instrumentss for _ in range(self.N)]
+		if isinstance(instruments,Instrument):
+			instruments = [ instruments for _ in range(self.N)]
 			#TODO: check the implications of this hackerino, nasty it is.
 
-		N_instr = len(instrumentss) 
+		N_instr = len(instruments) 
 		
 		if N_instr == 0:
-			self._instrumentss = [ [] for _ in range(self.N)] 
+			self._instruments = [ [] for _ in range(self.N)] 
 		elif N_instr < self.N:
-			print("Not enough instruments")
-			instrumentss.append([[] for _ in range(self.N-N_instr)])
-			self._instrumentss = instrumentss 
+			print(f"Not enough instruments, no instruments for last {self.N-N_instr} satellites")
+			instruments += [[] for _ in range(self.N-N_instr)]
+			self._instruments = instruments 
 		elif N_instr > self.N:
 			print("Too many instruments")
-			self._instrumentss = instrumentss[:self.N]
+			self._instruments = instruments[:self.N]
 		else:
-			self._instrumentss = instrumentss
+			self._instruments = instruments
 
 	@property
 	def sats(self):
@@ -193,6 +207,36 @@ class Ctll(object):
 
 
 	@classmethod
+	def from_sats(cls,sats,pattern=None,epoch=J2000):
+		"""Build constellation from satellite list or unique satellite.
+		
+		sats : ~CtllDes.core.satellite.Sat list
+			satellites
+		pattern : string
+			Satellite pattern
+		"""
+		if isinstance(sats,Sat):
+			return cls([sats.state],
+			status=[sats.status],
+			specs=[sats.spec],
+			instruments=sats.instruments,
+			pattern=pattern,
+			epoch=epoch)
+
+
+		states = [sat.state for sat in sats]
+		status = [sat.status for sat in sats]
+		specs = [sat.spec for sat in sats]
+		instruments = [sat.instruments for sat in sats]
+		
+		return cls(states,
+			status=status,
+			specs=specs,
+			instruments=instruments,
+			pattern=pattern,
+			epoch=J2000)
+
+	@classmethod
 	def from_WalkerDelta(
 		cls,
 		T,
@@ -204,9 +248,9 @@ class Ctll(object):
 		argp,
 		raan_offset = 0*u.deg,
 		nu_offset = 0*u.deg,
-		statuss=None,
+		status=None,
 		specs=None,
-		instrumentss=None,
+		instruments=None,
 		epoch=J2000,
 		plane=Planes.EARTH_EQUATOR,
 		attractor=Earth
@@ -242,7 +286,7 @@ class Ctll(object):
 			right ascension of the ascending node offset
 		nu_offset : ~astropy.units.Quantity, optional
 			True anomaly offset
-		statuss : list
+		status : list
 			list of SAT_STATUS strings, one for each sat  
 		epoch : ~astropy.time.Time, optional
 		    Epoch, default to J2000.
@@ -260,11 +304,20 @@ class Ctll(object):
 		
 		S = T/P
 		
-		raans = [raans_offset+int(j/S)*360*u.deg/P for j in range(T)]
+		raans = [((raan_offset.to(u.deg).value+int(j/S)*360/P)%360)*u.deg for j in range(T)]
 		
-		nus = [(j%S)*360*u.deg/S+int(j/S)*360*u.deg*F/T +nus_offset
+		nus = [( ((j%S)*360/S+int(j/S)*360*F/T +nu_offset.to(u.deg).value) % 360)*u.deg 
 		for j in range(T)
 		]
+
+		nu_ = []
+		for nu in nus:
+			if nu > 180*u.deg:
+				nu_.append(nu-360*u.deg)
+			else:
+				nu_.append(nu)
+
+		nus = nu_
 
 		states = [CS(attractor,p,ecc,inc,raans[j],argp,nus[j],plane) 
 		for j in range(T)]
@@ -272,9 +325,9 @@ class Ctll(object):
 
 		return cls(
 			states,
-			statuss,
+			status,
 			specs,
-			instrumentss,		
+			instruments,		
 			pattern=[{"PAT":PAT['WD']+f' T/P/F = {T}/{P}/{F}',"N":T}],
 			epoch=epoch
 		)
@@ -284,7 +337,7 @@ class Ctll(object):
 		"""Returns sats attribute: list of sats"""
 
 		return [Sat(st,status,spec,instr) for st,status,instr,spec
-		 in zip(self.states,self.statuss,self.instrumentss,self.specs)]
+		 in zip(self.states,self.status,self.instruments,self.specs)]
 
 
 
@@ -315,7 +368,7 @@ class Ctll(object):
 		""" Get subsatellite points for online Satellites,
 		T days of flight.
 
-		Parameters
+		parameters
 		----------
 		T : float
 			Desired time of propagation in days
@@ -348,12 +401,12 @@ class Ctll(object):
 		if isinstance(other, __class__):
 			new_pattern = other.pattern + self.pattern
 			new_states = other.states + self.states 
-			new_statuss = other.statuss + self.statuss
+			new_status = other.status + self.status
 			new_specs = other.specs + self.specs
-			new_instrumentss = other.instrumentss + self.instrumentss
+			new_instruments = other.instruments + self.instruments
 			epoch = self.epoch
 
-			return Ctll(new_states, new_statuss, new_specs, new_instrumentss,
+			return Ctll(new_states, new_status, new_specs, new_instruments,
 			new_pattern,epoch)
 
 		else:
@@ -385,27 +438,28 @@ class Ctll(object):
 			list of CtllDes.SAT.SAT_ST values
 		"""
 		
-		self.statuss = newStatuss 
+		self.status = newStatuss 
 		for sat,status in zip(self.sats,newStatuss):
 			sat.UpdateStatus(status)
 	
 
 	#TODO: check if it works or if is neccesary 
-	def update_specs(self,newSpecs):
+	def update_specs(self,new_specs):
 		"""Updates ctll sats specifications.
 		
 		Parameters
 		----------
-		newSpecs : list
+		new_specs : list
 			list of CtllDes.core.specs.Specifications 
 		"""
 		
-		self.statuss = newSpecs 
-		for sat,spec in zip(self.sats,newSpecs):
+		self.status = new_specs 
+		for sat,spec in zip(self.sats,new_specs):
 			sat.update_spec(spec)
 
+
 	#TODO: check if it works or if is neccesary
-	def update_instruments(self,newInstr):
+	def update_instruments(self,newInstr,f=False):
 		"""Updates ctll sats Instruments.
 		
 		Parameters
@@ -414,9 +468,9 @@ class Ctll(object):
 			list of CtllDes.core.instrument.Instrument
 		"""
 		
-		self.instrumentss = newInstr 
+		self.instruments = newInstr 
 		for sat,instr in zip(self.sats,newInstr):
-			sat.update_instruments(instr)
+			sat.update_instruments(instr,f)
 
 
 	def info(self,v=False):

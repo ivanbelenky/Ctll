@@ -1,7 +1,13 @@
 from ..core import ctll, satellite, instrument
+from ..targets.targets import Target
+from ..utils import trigsf
+
+
 import collections.abc
 from collections.abc import Iterable
 from astropy import units as u
+
+
 
 import numpy as np
 import pandas as pd
@@ -13,110 +19,110 @@ except ImportError:
 
 TOL = 1**(-10)
 
-def isCovered(lons,lats,r,target,R,coverage_method):
-	"""The CoverageMethod, returns an arbitrary length tuple of
-	comparing functions. 
+# def isCovered(lons,lats,r,target,R,coverage_method):
+# 	"""The CoverageMethod, returns an arbitrary length tuple of
+# 	comparing functions. 
 	
-	Parameters
-	----------
-	lons : ~astropy.units.Quantity
-		Quantity array of longitudes for subsatellite points [rad].
-	lats : ~astropy.units.Quantity
-		Quantity array of latitudes for subsatellite points [rad].
-	r : astropy.units.Quantity 
-		Satellite positions, distance Quantity
-	target : CtllDes.targets.targets.Target
-		Desired target of analysis
-	R : astropy.units.Quantity 
-		Mean radius of attractor
-	coverage_method : CtllDes.request.coverage.COV_METHODS
-		Coverage method grabbed from instruments ( # dont know yet, 
-		maybeduck typed _coverage)
+# 	Parameters
+# 	----------
+# 	lons : ~astropy.units.Quantity
+# 		Quantity array of longitudes for subsatellite points [rad].
+# 	lats : ~astropy.units.Quantity
+# 		Quantity array of latitudes for subsatellite points [rad].
+# 	r : astropy.units.Quantity 
+# 		Satellite positions, distance Quantity
+# 	target : CtllDes.targets.targets.Target
+# 		Desired target of analysis
+# 	R : astropy.units.Quantity 
+# 		Mean radius of attractor
+# 	coverage_method : CtllDes.request.coverage.COV_METHODS
+# 		Coverage method grabbed from instruments ( # dont know yet, 
+# 		maybeduck typed _coverage)
 		
 
-	This functions must be such that their input
-	are, the sub satellite points, the position and the target in question. 
-	It returns a list the same length of subsatellite points  """
+# 	This functions must be such that their input
+# 	are, the sub satellite points, the position and the target in question. 
+# 	It returns a list the same length of subsatellite points  """
 
-	#cov = np.array(coverage_method(lons,lats,r,target,R))
+# 	#cov = np.array(coverage_method(lons,lats,r,target,R))
 	
-	#column-wise multiplication, checks all requirements.
-	#cov = [ np.prod(outputs[:,i]) for i in outputs.shape[0] ]
+# 	#column-wise multiplication, checks all requirements.
+# 	#cov = [ np.prod(outputs[:,i]) for i in outputs.shape[0] ]
 	
-	return coverage_method(lons,lats,r,target,R)
+# 	return coverage_method(lons,lats,r,target,R)
 
 
 #list of built-in coverage methods
 
-def symmetric(FOV):
-	"""Circle of coverage centered on ssp"""
-	def _symmetric(lons,lats,r,target,R):
+# def symmetric(FOV):
+# 	"""Circle of coverage centered on ssp"""
+# 	def _symmetric(lons,lats,r,target,R):
 		
-		#HACK: there were 2 options, do this nasty thing here 
-		#or in targets.py I had to make that call.
+# 		#HACK: there were 2 options, do this nasty thing here 
+# 		#or in targets.py I had to make that call.
 		
-		t_lon = (target.x * u.deg).to(u.rad)
-		t_lat = (target.y * u.deg).to(u.rad)
-		radiis = np.sqrt(np.sum(r**2,axis=1))
+# 		t_lon = (target.x * u.deg).to(u.rad)
+# 		t_lat = (target.y * u.deg).to(u.rad)
+# 		radiis = np.sqrt(np.sum(r**2,axis=1))
 
-		rho = np.arcsin(R/radiis)
-		eps = np.arccos((np.sin(FOV))/(np.sin(rho)))
+# 		rho = np.arcsin(R/radiis)
+# 		eps = np.arccos((np.sin(FOV))/(np.sin(rho)))
 
-		lams = (np.pi/2)*u.rad - FOV - eps
+# 		lams = (np.pi/2)*u.rad - FOV - eps
 
-		s_lat_tgt = np.sin(t_lat)
-		c_lat_tgt = np.cos(t_lat)
-		s_lat_ssps = np.sin(lats)
-		c_lat_ssps = np.cos(lats)
-		c_lon_r = np.cos(t_lon-lons)
-		angles = np.arccos(s_lat_tgt*s_lat_ssps+
-			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
+# 		s_lat_tgt = np.sin(t_lat)
+# 		c_lat_tgt = np.cos(t_lat)
+# 		s_lat_ssps = np.sin(lats)
+# 		c_lat_ssps = np.cos(lats)
+# 		c_lon_r = np.cos(t_lon-lons)
+# 		angles = np.arccos(s_lat_tgt*s_lat_ssps+
+# 			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
 
-		cov = []
-		for angle,lam in zip(angles,lams):
-			if angle <= lam:
-				cov.append(1)
-			else:
-				cov.append(0)
-		return cov
+# 		cov = []
+# 		for angle,lam in zip(angles,lams):
+# 			if angle <= lam:
+# 				cov.append(1)
+# 			else:
+# 				cov.append(0)
+# 		return cov
 
-	return _symmetric
+# 	return _symmetric
 
-def symmetric_disk(FOV_max,FOV_min):
-	"""Disk of coverage centered on ssp"""
-	def _symmetric_disk(ssps,r,target,R):
+# def symmetric_disk(FOV_max,FOV_min):
+# 	"""Disk of coverage centered on ssp"""
+# 	def _symmetric_disk(ssps,r,target,R):
 		
-		#HACK: there were 2 options, do this nasty thing here 
-		#or in targets.py I had to make that call.
-		t_lon = (target.x * u.deg).to(u.rad)
-		t_lat = (target.y * u.deg).to(u.rad)
+# 		#HACK: there were 2 options, do this nasty thing here 
+# 		#or in targets.py I had to make that call.
+# 		t_lon = (target.x * u.deg).to(u.rad)
+# 		t_lat = (target.y * u.deg).to(u.rad)
 
-		radiis = np.sqrt(np.sum(a**2,axis=1))
+# 		radiis = np.sqrt(np.sum(a**2,axis=1))
 
-		rho = np.arcsin(R/radiis)*u.rad
-		eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
-		lam_min = (np.pi/2)*u.rad - FOV_min - eps
-		lam_max = (np.pi/2)*u.rad - FOV_max - eps
+# 		rho = np.arcsin(R/radiis)*u.rad
+# 		eps = np.arccos((np.sin(FOV))/(np.sin(rho)))*u.rad
+# 		lam_min = (np.pi/2)*u.rad - FOV_min - eps
+# 		lam_max = (np.pi/2)*u.rad - FOV_max - eps
 		
-		np_ssps = np.array(ssps)
-		s_lat_tgt = np.sin(t_lat)
-		c_lat_tgt = np.cos(t_lat)
-		s_lat_ssps = np.sin(np_ssps[:,1])
-		c_lat_ssps = np.cos(np_ssps[:,1])
-		c_lon_r = np.cos(t_lon-np_ssps[:,0])
-		a = np.arccos(s_lat_tgt*s_lat_ssps+
-			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
+# 		np_ssps = np.array(ssps)
+# 		s_lat_tgt = np.sin(t_lat)
+# 		c_lat_tgt = np.cos(t_lat)
+# 		s_lat_ssps = np.sin(np_ssps[:,1])
+# 		c_lat_ssps = np.cos(np_ssps[:,1])
+# 		c_lon_r = np.cos(t_lon-np_ssps[:,0])
+# 		a = np.arccos(s_lat_tgt*s_lat_ssps+
+# 			c_lat_ssps*c_lat_tgt*c_lon_r) 	 
 		
-		boolean = []
-		for _ in angles:
-			if  lam_min <= _ <= lam_max:
-				boolean.append(1)
-			else:
-				boolean.append(0)
+# 		boolean = []
+# 		for _ in angles:
+# 			if  lam_min <= _ <= lam_max:
+# 				boolean.append(1)
+# 			else:
+# 				boolean.append(0)
 		
-		return boolean
+# 		return boolean
 
-	return _symmetric_disk
+# 	return _symmetric_disk
 
 
 
@@ -126,7 +132,74 @@ def symmetric_with_roll():
 
 
 
+def symmetric_disk(FOV_min,FOV_max,lons,lats,r,target,R):
+	"""coverage method.
+
+	Disk of coverage centered on subsatellite point.
+	
+	Parameters
+	----------
+	FOV_min : ~Astropy.units.quantity.Quantity
+		minimum field of view in radians
+	FOV_max : ~Astropy.units.quantity.Quantity
+		maximum field of view in radians
+
+	* : default coverage parameters
+		help(CtllDes.request.coverage.Instrument.coverage) for more
+		info.
+
+	"""
+		
+	#HACK: there were 2 options, do this nasty thing here 
+	#or in targets.py I had to make that call.
+
+	if FOV_max < FOV_min:
+		raise ValueError("Wrong FOV ordering")
+
+
+	lams_min = trigsf.get_lam(r,FOV_min,R)
+	lams_max = trigsf.get_lam(r,FOV_max,R)
+
+	angles = trigsf.get_angles(lons,lats,(target.x*u.deg).to(u.rad),
+		(target.y*u.deg).to(u.rad))
+
+	cov = []
+	for angle,lam_min,lam_max in zip(angles,lams_min,lams_max):
+		if  lam_min <= angle <= lam_max:
+			cov.append(1)
+		else:
+			cov.append(0)
+	
+	return cov
+
+
+
+
+def symmetric(FOV,lons,lats,r,v,target,R):
+	"""Circle of coverage centered on ssp"""
+		
+	#HACK: there were 2 options, do this nasty thing here 
+	#or in targets.py I had to make that call.
+
+
+
+	lams = trigsf.get_lam(r,FOV,R)
+	angles = trigsf.get_angles(lons,lats,(target.x*u.deg).to(u.rad),
+		(target.y*u.deg).to(u.rad))
+
+	cov = []
+	for angle,lam in zip(angles,lams):
+		if angle <= lam:
+			cov.append(1)
+		else:
+			cov.append(0)
+	
+	return cov
+
+
+
 COV_METHODS = [symmetric, symmetric_disk, symmetric_with_roll]
+
 
 
 class Coverages(collections.abc.Set):
@@ -150,6 +223,8 @@ class Coverages(collections.abc.Set):
 					lst.append(cov)
 
 		self._targets = {(covv.target.lon,covv.target.lat) for covv in self.covs}
+		self._sats_id = {covv.sat_id for covv in self.covs }
+
 
 	@property
 	def covs(self):
@@ -157,8 +232,14 @@ class Coverages(collections.abc.Set):
 	
 	@property
 	def targets(self):
-		return self._targets
+		tgts = [Target(ll[0],ll[1]) for ll in self._targets]
+		return tgts
 	
+	@property
+	def sats_id(self):
+		return self._sats_id
+	
+
 
 	def __iter__(self):
 		return iter(self.covs)
@@ -181,19 +262,18 @@ class Coverages(collections.abc.Set):
 
 		df = pd.DataFrame(columns=['T',
 									'dt',
-									'Instrument ID',
+									'Satellite ID',
 									'Target',
 									'accumulated',
 									'mean gap light',
 									'mean gap dark',
 									'response time',
-									'time gap',
 									'average time gap',
                           			'max gap'])
 
 		data = [{'T': cov.T,
 				'dt': cov.dt,
-				'Instrument ID': cov.instr_id, 
+				'Satellite ID': cov.sat_id, 
 	        	'Target':(cov.target.lon,cov.target.lat),
     	    	'accumulated': cov.accumulated,
         		'mean gap light': cov.mean_gap_light,
@@ -208,7 +288,7 @@ class Coverages(collections.abc.Set):
 		
 
 	@classmethod
-	def from_ctll(cls,ctll,targets,T,dt=1.):
+	def from_ctll(cls,ctll,targets,T,dt=1.,**kwargs):
 		"""Get coverages from constellation.
 		
 		Parameters
@@ -232,8 +312,9 @@ class Coverages(collections.abc.Set):
 
 		ctll_covs = []
 		for sat in ctll.sats:
+			print(f'Satellite {ctll.sats.index(sat)+1} of {ctll.N}')
 			try:
-				sat_covs = Coverages.from_sat(sat,targets,T,dt)
+				sat_covs = Coverages.from_sat(sat,targets,T,dt,f=True,**kwargs)
 			except Exception as e:
 				print(e)
 				pass
@@ -247,7 +328,7 @@ class Coverages(collections.abc.Set):
 
 
 	@classmethod
-	def from_sat(cls,sat, targets,T, dt=1.):
+	def from_sat(cls,sat, targets,T, dt=1.,f=False,**kwargs):
 		"""Build list of coverage objects from satellite
 	
 		Parameters
@@ -260,65 +341,80 @@ class Coverages(collections.abc.Set):
 			Desired Time of analysis in days.
 		dt : float | int, optional
 			time of sampling in seconds
-
+		f :  boolean
+			Not to be modfied from default state
 		Returns
 		-------
 		Coverages : list
 			List of Coverage objects, one for each target and  
 			coverage instrument.
+		
+		Not the best practice to return two different types,
+		depending on internal or external use.
+		but since the use of this library is quite reduced. This 
+		will be fixed later.
 
 		"""
-
+		if isinstance(targets,Target):
+			targets = [targets]
 
 		cov_instruments = [instr for instr in sat.cov_instruments]
 		if not len(cov_instruments):
 			raise Exception("No coverage instruments found on" +
 				f" satID : {sat.id}")	
 
-		lons,lats = sat.ssps(T,dt)
-		r,v = sat.rv(T,dt)
+		lons,lats = sat.ssps(T,dt,**kwargs)
+		r,v = sat.rv(T,dt,**kwargs)
 
 
 		total = len(cov_instruments)*len(targets)
-		count=1
-	
+		count = 1
 		sat_coverages = []
+			
 		for instr in cov_instruments:
 			for target in targets:
-				cov = isCovered(lons,lats,r,target,sat.attractor.R_mean,instr.coverage())
-				sat_coverages.append(Coverage(cov,target,T,dt,instr.id))
+				#cov = isCovered(lons,lats,r,target,sat.attractor.R_mean,instr.coverage())
+				cov = instr.coverage(lons,lats,r,v,target,sat.attractor.R_mean)
+				sat_coverages.append(Coverage(cov,target,T,dt,sat.id))
 				print(f'target {target.x}° {target.y}°. {count} of {total}')
 				count += 1
-		return sat_coverages
+
+		if f:
+			return sat_coverages
+		else:
+			return Coverages(sat_coverages,tag=sat.__str__())
+
+
+
+	def collapse_sats(self,id_lst=None):
+		""" Collapse Coverages object and create new one from specified
+		satellites. If non specified, it will colapse all sats.
 		
+		Parameters
+		----------
+		id_lst : list, optional
+			Satellites ID list
+		"""		
+		lst = id_lst if id_lst else self.sats_id
 
-		
-	def collapse_instruments(self):
-		"""Obtain coverages regardless of instrument.
+		sat_tgt = []
 
-		Returns
-		-------
-		collapsed : CtllDes.requests.coverage.Coverages
-			Coverages object with Covs merged for target
+		for target in self.targets:
 
-		"""
-		#TODO: ive changed the self.targets, now is broken as fuck
-		tgts = self.targets
-		cov_tgt = [[] for tgt in tgts]
-		for cov in self.covs:
-			idx = tgts.index(cov.target)
-			cov_tgt[idx].append(cov)
+			sat_tgt.append([covv for covv in self.covs 
+				if (covv.sat_id in lst and covv.target == target)])
 
-		collapsed = []	
-		for covs in cov_tgt: 
-			new_cov = covs[0]
-			for i in range(1,len(covs)):
-				new_cov = new_cov + covs[i]
-			collapsed.append(new_cov)
+		Covs = []
+		for sats in sat_tgt:
+			cov = sats[0]
+			newcov = np.max(np.array([sat.cov for sat in sats]),axis=0)
+			print(newcov)
+			Covs.append(Coverage(newcov,cov.target,cov.T,cov.dt))
 
-		return Coverages(collapsed,tag=f"{self.tag} collapsed")
+		return Coverages(Covs,tag=f'collapsed satellites: {lst}')
 
 
+	
 
 		
 
@@ -333,7 +429,7 @@ class Coverage(object):
 		target,
 		T,
 		dt,
-		instr_id=None,
+		sat_id=None,
 	):
 		"""Constructor for Coverage
 		
@@ -348,13 +444,13 @@ class Coverage(object):
 			Time of flight in days
 		dt : float | int
 			time interval in seconds
-		instr_id : uuid.UUID, optional
-			Instrument id related to the cov collection.
+		sat_id : uuid.UUID, optional
+			Satellite id related to the cov collection.
 		"""
 
 		self._cov = cov
 		self._target = target
-		self._instr_id = instr_id 
+		self._sat_id = sat_id if sat_id else ''
 		self._T = T
 		self._dt = dt
 
@@ -367,8 +463,8 @@ class Coverage(object):
 		return self._cov
 
 	@property
-	def instr_id(self):
-		return self._instr_id
+	def sat_id(self):
+		return self._sat_id
 	
 	
 	@property
@@ -463,7 +559,7 @@ class Coverage(object):
 		if c_gap == 0:
 			return 0
 		else:
-			return gap*self.dt/c_gap	
+			return gap/c_gap	
 
 	
 	
@@ -534,3 +630,35 @@ class Coverage(object):
 		plt.title(str(self.acumulado()))
 
 		return fig
+
+
+
+
+
+
+
+
+	# def collapse_instruments(self):
+	# 	"""Obtain coverages regardless of instrument.
+
+	# 	Returns
+	# 	-------
+	# 	collapsed : CtllDes.requests.coverage.Coverages
+	# 		Coverages object with Covs merged for target
+
+	# 	"""
+	# 	#TODO: ive changed the self.targets, now is broken as fuck
+	# 	tgts = self.targets
+	# 	cov_tgt = [[] for tgt in tgts]
+	# 	for cov in self.covs:
+	# 		idx = tgts.index(cov.target)
+	# 		cov_tgt[idx].append(cov)
+
+	# 	collapsed = []	
+	# 	for covs in cov_tgt: 
+	# 		new_cov = covs[0]
+	# 		for i in range(1,len(covs)):
+	# 			new_cov = new_cov + covs[i]
+	# 		collapsed.append(new_cov)
+
+	# 	return Coverages(collapsed,tag=f"{self.tag} collapsed")
