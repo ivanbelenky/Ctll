@@ -73,8 +73,30 @@ def c2s(x,y,z):
     return r,lat,lon
 
 
+def get_lam_0(r,R):
+    """Maximum attractor's central angle
+    Parameters
+        ----------
+        r : ~astropy.units.quantity.Quantity
+            positions in kilometers or any distance metric
+        R : ~astropy.units.quantity.Quantity
+            attractor mean radius
+
+        Returns
+        -------
+        lams :  ~astropy.units.quantity.Quantity
+            maximum(s) attractor's central angle(s).
+        
+    """
+
+    radiis = np.sqrt(np.sum(r**2,axis=1))
+    lams_0 = np.arccos(R/radiis)
+
+    return lams_0
+
+
 def get_lam(r,FOV,R):
-    """Maximum attractor's central angle.
+    """Maximum attractor's central angle related to FOV.
     
     Parameters
     ----------
@@ -118,7 +140,7 @@ def get_angles(lons,lats,t_lon,t_lat):
     Returns
     -------
     angles : ~numpy.ndarray
-        angle between first and second points
+        angle between first and second points in radians
 
     """
     
@@ -131,3 +153,41 @@ def get_angles(lons,lats,t_lon,t_lat):
         c_lat_ssps*c_lat_tgt*c_lon_r)    
 
     return angles
+
+
+
+
+def get_elevations(r, lons, lats, t_lon, t_lat, R):
+    """Get elevation angle from r to target.
+    
+    Parameters
+    ----------
+    r : ~astropy.units.quantity.Quantity
+        positions, distance
+    lons : ~astropy.units.quantity.Quantity
+        first longitudes in radians
+    lats : ~astropy.units.quantity.Quantity 
+        first latitudes in radians
+    target : CtllDes.targets.targets.Target
+        desired target 
+    R : ~astropy.units.quantity.Quantity
+        attractors mean radius, distance
+
+
+    Returns
+    -------
+    e : ~numpy.ndarray
+        elevations angles in radians
+    """
+
+
+    lam_0 = get_lam_0(r, R)
+    sin_rho = np.cos(lam_0)
+
+    lam = get_angles(lons, lats, t_lon, t_lat)  
+    
+    eta = np.arctan(sin_rho*np.sin(lam)/(1-sin_rho*np.cos(lam)))
+
+    e = np.arccos(np.sin(eta)/sin_rho)
+
+    return e

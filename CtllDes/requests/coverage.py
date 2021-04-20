@@ -21,6 +21,40 @@ TOL = 1**(-10)
 
 
 
+def get_view(lons, lats, r, target, R):
+	"""Get string indicating in view considering maximum 
+	field of view possible, i.e. elevation = 0 
+
+	Parameters
+	----------
+	lons : ~astropy.units.quantity.Quantity
+		longitudes in radians
+	lats : ~astropy.units.quantity.Quantity
+			latitudes in radians
+	r : ~astropy.units.quantity.Quantity
+		position, distance
+	target : CtllDes.targets.targets.Target
+		desired target
+	R : ~astropy.units.quantity.Quantity
+		attractors mean distance
+	"""
+	t_lon = (target.x*u.deg).to(u.rad)
+	t_lat = (target.y*u.deg).to(u.rad)
+
+	lams_0 = trigsf.get_lam_0(r,R)
+
+	angles = trigsf.get_angles(lons, lats, t_lon, t_lat)
+
+	cov = []
+	for a,l in zip(angles,lams_0):
+		if a < l: 
+			cov.append(1)
+		else:
+			cov.append(0)
+
+	return cov
+
+
 
 #TODO: implement
 def symmetric_with_roll():

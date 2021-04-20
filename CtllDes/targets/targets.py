@@ -161,6 +161,9 @@ class Target(object):
 			latitude 
 		 
 		"""
+
+		#TODO: fix lat lon in coverage or here.
+
 		self._lat = lat 
 		self._lon = lon 
 
