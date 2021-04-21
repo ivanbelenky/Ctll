@@ -67,7 +67,7 @@ def c2s(x,y,z):
     """
     
     r = (x**2+y**2+z**2)**(1/2)
-    lat = np.sign(z)*np.arccos( ((x**2+y**2)**(1/2)) /r)
+    lat = np.sign(z)*np.arccos(((x**2+y**2)**(1/2))/r)
     lon = np.arctan2(y,x)
 
     return r,lat,lon
@@ -118,7 +118,7 @@ def get_lam(r,FOV,R):
     rho = np.arcsin(R/radiis)
     eps = np.arccos((np.sin(FOV))/(np.sin(rho)))
 
-    lams = (np.pi/2)*u.rad - FOV - eps
+    lams = (np.pi/2)*u.rad-FOV-eps
 
     return lams
 
@@ -183,11 +183,8 @@ def get_elevations(r, lons, lats, t_lon, t_lat, R):
 
     lam_0 = get_lam_0(r, R)
     sin_rho = np.cos(lam_0)
-
     lam = get_angles(lons, lats, t_lon, t_lat)  
-    
     eta = np.arctan(sin_rho*np.sin(lam)/(1-sin_rho*np.cos(lam)))
-
     e = np.arccos(np.sin(eta)/sin_rho)
 
     return e

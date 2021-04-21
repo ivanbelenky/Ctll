@@ -5,6 +5,8 @@ import numpy as np
 from shapely.geometry import Point
 import collections.abc
 from collections.abc import Iterable
+
+
 from astropy import units as u
 
 import os
@@ -13,7 +15,8 @@ import sys
 fp_country = sys.path[0] + '/CtllDes/targets/borders-simple/TM_WORLD_BORDERS_SIMPL-0.3.shp'
 fp_state = sys.path[0] + '/CtllDes/targets/borders-states/ne_10m_admin_1_states_provinces.shp'
 
-#TODO: check tolerance when testing
+#TODO: update docstrings. Redo the functions adding the filepath in order to eliminate the database for borders
+
 TOL = 10**-5 
 
 class Targets(collections.abc.Set):
@@ -102,7 +105,7 @@ class Targets(collections.abc.Set):
 		if not isinstance(N,(float,int)):
 			raise TypeError("N must be float or int")
 		elif N<1:
-			raise ValueError("N must be at least 1")
+			raise ValueError("N must be >= 1")
 
 		
 		fp = fp_state
@@ -185,13 +188,13 @@ class Target(object):
 		return self._lat
 	
 	def __eq__(self, other):
-		if self.x-other.x < TOL and self.y-other.y < TOL:
+		if np.abs(self.x-other.x) < TOL and np.abs(self.y-other.y) < TOL:
 			return True
 		else:
 			return False
 
 	def __ne__(self,other):
-		if self.x-other.x > TOL or self.y-other.y < TOL:
+		if np.abs(self.x-other.x) > TOL or np.abs(self.y-other.y) < TOL:
 			return True
 		else:
 			return False
