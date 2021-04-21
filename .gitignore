@@ -1,0 +1,6 @@
+venv
+pyvenv.cfg
+Pipfile.lock
+Pipfile
+.ipynb_checkpoints
+examples/
