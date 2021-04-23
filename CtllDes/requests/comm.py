@@ -51,9 +51,9 @@ def default_comm_data(sat, target, T, dt=1., **kwargs):
 	t_lon = (target.x*u.deg).to(u.rad)
 	t_lat = (target.y*u.deg).to(u.rad)
 
-	elevations = trigsf.get_elevations(u.Quantity(r_),
-		u.Quantity(lons_),
-		u.Quantity(lats_),
+	elevations = trigsf.get_elevations(u.Quantity(r_,unit=u.km),
+		u.Quantity(lons_,unit=u.rad),
+		u.Quantity(lats_,unit=u.rad),
 		t_lon,
 		t_lat,
 		sat.attractor.R_mean)
@@ -61,9 +61,9 @@ def default_comm_data(sat, target, T, dt=1., **kwargs):
 
 	data = [{'r':r_[i],
 		'v':v_[i],
-		'lon ssp':lons_[i],
-		'lat ssp':lats_[i],
-		'elevation':elevations[i],
+		'lon ssp':lons_[i].value,
+		'lat ssp':lats_[i].value,
+		'elevation':elevations[i].value,
 		'time':times[i]
 	} for i in range(len(lons_))]
 

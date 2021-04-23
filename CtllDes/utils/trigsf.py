@@ -114,7 +114,10 @@ def get_lam(r,FOV,R):
 
     """
 
-    radiis = np.sqrt(np.sum(r**2,axis=1))
+    if len(r) == 3:
+        radiis = np.sqrt(np.sum(r**2))
+    else:
+        radiis = np.sqrt(np.sum(r**2,axis=1))
     rho = np.arcsin(R/radiis)
     eps = np.arccos((np.sin(FOV))/(np.sin(rho)))
 
@@ -184,7 +187,7 @@ def get_elevations(r, lons, lats, t_lon, t_lat, R):
     lam_0 = get_lam_0(r, R)
     sin_rho = np.cos(lam_0)
     lam = get_angles(lons, lats, t_lon, t_lat)  
-    eta = np.arctan(sin_rho*np.sin(lam)/(1-sin_rho*np.cos(lam)))
+    eta = np.arctan2(sin_rho*np.sin(lam),(1-sin_rho*np.cos(lam)))
     e = np.arccos(np.sin(eta)/sin_rho)
 
     return e

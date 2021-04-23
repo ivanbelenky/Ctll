@@ -4,7 +4,7 @@ import numpy as np
 
 from astropy import units as u 
 
-from CtllDes.requests.coverage import symmetric 
+from CtllDes.requests.coverage import symmetric, push_broom
 
 import uuid
 
@@ -71,3 +71,13 @@ class GodInstrument(Instrument):
 
     def coverage(self, lons, lats, r, v, target, R):
         return [1 for _ in range(len(r))]
+
+
+
+class PushBroom(Instrument):
+	def __init__(self,FOV):
+		super().__init__()
+		self.FOV = FOV
+
+	def coverage(self, lons, lats, r, v, target, R):
+		return push_broom(self.FOV, lons, lats, r, target, R)

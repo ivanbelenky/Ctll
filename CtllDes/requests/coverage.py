@@ -55,6 +55,39 @@ def get_view(lons, lats, r, target, R):
 	return cov
 
 
+def push_broom(FOV_vert, lons, lats, r, target, R):
+	view = get_view(lons, lats, r, target, R)
+	
+	cov = []
+	for i in range(1,len(view)):
+		if view[i] == 1:
+			radii = np.sqrt(np.sum(r[i]**2))
+
+			t_lon = (target.x*u.deg).to(u.rad)-lons[i]
+			t_lat = (target.y*u.deg).to(u.rad)-lats[i]
+							
+			inc = np.arctan2(np.sin(lons[i]-lons[i-1])*np.sin(lats[i]-lats[i-1]),np.cos(lats[i-1]))
+			cos_inc = np.cos(i)
+			sin_inc = np.sin(i)
+			angle = trigsf.get_angles(0,0,lons[i]-lons[i-1],lats[i]-lats[i-1])
+
+			t_lon = np.arctan2(cos_inc*np.sin(t_lon)*np.sin(t_lat)+sin_inc*np.cos(t_lat),
+			 np.cos(t_lon)*np.sin(t_lat))
+			t_lat = np.arccos(-sin_inc*np.sin(t_lon)*np.sin(t_lat)+cos_inc*np.cos(t_lat)) 
+
+			lam = trigsf.get_lam(r[i],FOV_vert,R)
+
+			if t_lon < angle/2 and t_lat < lam:
+				cov.append(1)
+			else:
+				cov.append(0)
+		else:
+			cov.append(0)
+			pass
+
+	return cov
+
+
 
 #TODO: implement
 def symmetric_with_roll():
@@ -424,7 +457,7 @@ class Coverage(object):
 	@property
 	def accumulated(self):
 		"""Accumulated time of view [s]"""
-		return self._accumulated*self.dt
+		return self._accumulated
 
 	@property
 	def mean_gap_light(self):
