@@ -3,6 +3,7 @@ from ..targets.targets import Target
 from ..utils import trigsf
 
 
+
 import collections.abc
 from collections.abc import Iterable
 from astropy import units as u
@@ -11,6 +12,9 @@ from poliastro.twobody import propagation
 
 import numpy as np
 import pandas as pd
+
+import matplotlib.pyplot as plt
+
 
 try:
     from functools import cached_property  # type: ignore
@@ -677,7 +681,7 @@ class Coverage(object):
 
 		fig = plt.figure()
 		plt.step(x,y,**kwargs)
-		plt.title(str(self.acumulado()))
+		plt.title(str(self._accum))
 
 		return fig
 			
