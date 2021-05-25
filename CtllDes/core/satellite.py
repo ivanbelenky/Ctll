@@ -34,9 +34,7 @@ SAT_ST = {
 
 
 
-
-
-PROPAGATOR_DT = 100
+PROPAGATOR_DT = 300
 
 class Sat(object):
 
@@ -283,6 +281,16 @@ class Sat(object):
 		
 		return lons,lats
 
+
+	def ssps_from_r(self,r,T,dt=1.,method=propagation.cowell,**kwargs):
+		"""Same as ssps but builds from rr
+		"""
+		
+		kw = self._parse_kwargs(**kwargs)
+		w = self.attractor.angular_velocity
+		lons,lats = self.Propagator.get_ssps_from_rr(T,dt,w,r,method,**kw)
+
+		return lons,lats
 	
 	def __str__(self):
 		return f'{self.orbit}'
@@ -408,7 +416,7 @@ class Propagator(object):
 	def __init__(
 		self,
 		orbit,
-	 	T = 10,
+	 	T = 0.01,
 	 	method = propagation.cowell,	   
 		**kwargs
 	):
@@ -563,6 +571,36 @@ class Propagator(object):
 		return ephemerides.rv(tofs)
 	
 
+	def get_ssps_from_rr(self, T, dt, w, rr , method=propagation.cowell,**kwargs):
+		"""Return subsatellite points"""
+
+		
+		
+		flag = False		
+		if kwargs != self.kwargs:
+			flag = True
+			self._kwargs = kwargs
+		if T > self.T:
+			flag = True 
+			self.T = T
+		if method != self.method:
+			flag = True
+			self.method = method
+
+		if flag:
+			self._setcoords()
+
+		rs,lats,lons = trigsf.c2s(rr[:,0].value, rr[:,1].value, rr[:,2].value)
+
+		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/dt))
+		
+		#de-rotation
+		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
+		lats = lats*u.rad
+
+		return lons,lats
+
+
 	def get_ssps(self,T,dt,w,method=propagation.cowell,**kwargs):
 		"""Return subsatellite points"""
 
@@ -581,11 +619,11 @@ class Propagator(object):
 			self._setcoords()
 
 
-		ephemerides = ephem.Ephem(self.coords,self.tofs, Planes.EARTH_EQUATOR)
-		rr,vv = ephemerides.rv()
+		#ephemerides = ephem.Ephem(self.coords,self.tofs, Planes.EARTH_EQUATOR)
+		rr,vv = self.get_rv(T,dt,method=propagation.cowell, **kwargs)#ephemerides.rv()
 		rs,lats,lons = trigsf.c2s(rr[:,0].value, rr[:,1].value, rr[:,2].value)
 
-		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/self._DT))
+		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/dt))
 		
 		#de-rotation
 		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
@@ -593,19 +631,19 @@ class Propagator(object):
 
 
 		#this manipulation is needed to fold the interpolation 
-		adder = 2*np.pi * u.rad
-		for i in range(1,len(lons)):
-			if np.abs(lons[i].value-lons[i-1].value) > 1:
-				sgn=np.sign(lons[i].value-lons[i-1].value)
-				lons[i:] += -sgn*adder
+		# adder = 2*np.pi * u.rad
+		# for i in range(1,len(lons)):
+		# 	if np.abs(lons[i].value-lons[i-1].value) > 1:
+		# 		sgn=np.sign(lons[i].value-lons[i-1].value)
+		# 		lons[i:] += -sgn*adder
 
 		
 		#interpolation of manipulated and folded points 
-		flats = interp1d(tofs,lats)
-		flons = interp1d(tofs,lons)
-		tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
-		lats = flats(tofs) * u.rad
-		lons = flons(tofs) % (2*np.pi) * u.rad
+		#flats = interp1d(tofs,lats)
+		#flons = interp1d(tofs,lons)
+		#tofs = np.linspace(0,T*3600*24*u.s,int(T*3600*24/dt))
+		#lats = flats(tofs) * u.rad
+		#lons = (lons.value) % (2*np.pi) * u.rad 
 
 		return lons,lats
 

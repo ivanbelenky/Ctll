@@ -30,6 +30,40 @@ def MSL(a,b,A,B):
     
     return math.atan2(sinc,cosc)
 
+
+def arccos2(phi, H_phi):
+
+    arccos = np.arccos(phi)
+    if 0 < (H_phi%(2*np.pi)) < np.pi/2:
+        return arccos%(2*np.pi)
+    else:
+        return (-arccos)%(2*np.pi)
+
+
+def SSS(a, b, c):
+    """Side-Side-Side spherical triangle, returns sides. 
+    Only use if you are certain that a,b,c form a triangle. The function
+    does not check this for you
+
+    """
+    
+    
+    cos_a = np.cos(a)
+    cos_b = np.cos(b)
+    cos_c = np.cos(c)
+
+    sin_a = np.sin(a)
+    sin_b = np.sin(b)
+    sin_c = np.sin(c)
+
+    A = np.arccos((cos_a-cos_b*cos_c)/(sin_b*sin_c))
+    B = np.arccos((cos_b-cos_a*cos_c)/(sin_a*sin_c))
+    C = np.arccos((cos_c-cos_a*cos_b)/(sin_a*sin_b))
+
+    return A, B, C 
+
+
+
 def pitolat(rad):
     """Util solamente por ahora para traducir resultados de AAS a lat y long"""
     sgn = np.sign(rad)
@@ -103,7 +137,7 @@ def get_lam(r,FOV,R):
     r : ~astropy.units.quantity.Quantity
         positions in kilometers or any distance metric
     FOV : ~astropy.units.quantity.Quantity
-        field of fiew in radians
+        field of view in radians
     R : ~astropy.units.quantity.Quantity
         attractor mean radius
 
@@ -118,6 +152,7 @@ def get_lam(r,FOV,R):
         radiis = np.sqrt(np.sum(r**2))
     else:
         radiis = np.sqrt(np.sum(r**2,axis=1))
+
     rho = np.arcsin(R/radiis)
     eps = np.arccos((np.sin(FOV))/(np.sin(rho)))
 

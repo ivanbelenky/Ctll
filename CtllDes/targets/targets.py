@@ -76,8 +76,7 @@ class Targets(collections.abc.Set):
 
 		fp = fp_country
 		data = gpd.read_file(fp)
-		data = gpd.read_file(fp)
-
+		
 		country_row = data.loc[data['NAME'] == country]
 		country_row['geometry']
 		cg = country_row['geometry'] 

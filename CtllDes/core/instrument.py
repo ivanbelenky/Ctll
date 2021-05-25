@@ -4,7 +4,7 @@ import numpy as np
 
 from astropy import units as u 
 
-from CtllDes.requests.coverage import symmetric, push_broom
+from CtllDes.requests.coverage import symmetric, push_broom, _push_broom, symmetric_with_roll
 
 import uuid
 

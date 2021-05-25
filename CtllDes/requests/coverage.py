@@ -7,7 +7,7 @@ import collections.abc
 from collections.abc import Iterable
 from astropy import units as u
 
-
+from poliastro.twobody import propagation
 
 import numpy as np
 import pandas as pd
@@ -55,7 +55,7 @@ def get_view(lons, lats, r, target, R):
 	return cov
 
 
-def push_broom(FOV_vert, lons, lats, r, target, R):
+def _push_broom(FOV_vert, lons, lats, r, target, R):
 	view = get_view(lons, lats, r, target, R)
 	
 	cov = []
@@ -87,10 +87,93 @@ def push_broom(FOV_vert, lons, lats, r, target, R):
 
 	return cov
 
+def push_broom(FOV_vert, lons, lats, r, target, R):
+	view = get_view(lons, lats, r, target, R)
+
+	cov = []
+	
+	t_lon = (target.x*u.deg).to(u.rad)
+	t_lat = (target.y*u.deg).to(u.rad)
+
+	for i in range(1,len(view)):
+		if view[i] == 1:
+
+			lam = trigsf.get_lam(r[i],FOV_vert,R)
+			angle_target = trigsf.get_angles(lons[i],lats[i],t_lon,t_lat)
+			
+			if angle_target > lam:
+				cov.append(0)
+
+			else:
+				# r_ant = np.linalg.norm(r[i-1])*np.array([np.sin(lats[i-1])*np.cos(lons[i-1]),
+				# np.sin(lats[i-1])*np.sin(lons[i-1]), np.cos(lats[i-1])]) 
+
+				# r_ = np.linalg.norm(r[i])*np.array([np.sin(lats[i])*np.cos(lons[i]),
+				#  np.sin(lats[i])*np.sin(lons[i]), np.cos(lats[i])]) 
+
+				# r_post = np.linalg.norm(r[i+1])*np.array([np.sin(lats[i+1])*np.cos(lons[i+1]),
+				#  np.sin(lats[i+1])*np.sin(lons[i+1]), np.cos(lats[i+1])]) 
+				
+				# mid_point_ant = (r_ant + r_)/np.linalg.norm(r_ant + r_)*R 
+				
+				# r_ant, lat_ant, lon_ant = trigsf.c2s(mid_point_ant[0],
+				#  mid_point_ant[1], mid_point_ant[2])
 
 
-#TODO: implement
-def symmetric_with_roll():
+				# mid_point_post = (r_post + r_)/np.linalg.norm(r_post + r_)*R
+
+				# r_post, lat_post, lon_post = trigsf.c2s(mid_point_post[0],
+				#  mid_point_post[1], mid_point_post[2])
+
+
+				angle = trigsf.get_angles(lons[i-1],lats[i-1], lons[i], lats[i])			
+				angle_ant = trigsf.get_angles(lons[i-1],lats[i-1], t_lon, t_lat)
+				angle_post = trigsf.get_angles(lons[i], lats[i], t_lon, t_lat)
+				A, B, C = trigsf.SSS(angle.value, angle_post.value, angle_ant.value) 
+
+				if (B < np.pi/2) and (C < np.pi/2):
+					cov.append(1)
+				else:
+					cov.append(0)
+
+		else:
+			cov.append(0)
+	return cov
+
+
+def symmetric_with_roll(FOV, lons, lats, r, v, target, R, roll_angle = 0):
+	"""coverage method 
+
+	This coverage method, is symmetric with the roll capabilities.
+	It is just a potential coverage obtained by stipulating the new field of
+	view, obtained by the roll angle in any direction. Perpendicular to velocity
+	rolls are not taken into account since, increase in coverage from this 
+	analysis are restricted to a few seconds of the satellite passing. 
+	
+
+	"""
+
+	radiis = np.linalg.norm(r,axis=1)
+
+	lams_0 = np.arccos(R/radiis)
+	max_etas = np.arcsin(R/radiis)
+	lams = trigsf.get_lam(r,FOV+roll_angle,R)
+
+	final_lams = np.array([ lam_0 if (max_eta < (FOV + roll_angle).value) else lam 
+		for lam_0,max_eta,lam in zip(lams_0.value, max_etas.value, lams.value) ])*u.rad
+
+	angles = trigsf.get_angles(lons,lats,(target.x*u.deg).to(u.rad),
+		(target.y*u.deg).to(u.rad))
+
+	cov = []
+	for angle,lam in zip(angles,final_lams):
+		if angle <= lam:
+			cov.append(1)
+		else:
+			cov.append(0)
+	
+	return cov
+
 	pass
 
 
@@ -102,9 +185,9 @@ def symmetric_disk(FOV_min,FOV_max,lons,lats,r,target,R):
 	
 	Parameters
 	----------
-	FOV_min : ~Astropy.units.quantity.Quantity
+	FOV_min : ~astropy.units.quantity.Quantity
 		minimum field of view in radians
-	FOV_max : ~Astropy.units.quantity.Quantity
+	FOV_max : ~astropy.units.quantity.Quantity
 		maximum field of view in radians
 
 	* : default coverage parameters
@@ -326,9 +409,10 @@ class Coverages(collections.abc.Set):
 			raise Exception("No coverage instruments found on" +
 				f" satID : {sat.id}")	
 
-		lons,lats = sat.ssps(T,dt,**kwargs)
+		#TODO lons,lats from rrs,T,dt
+		
 		r,v = sat.rv(T,dt,**kwargs)
-
+		lons,lats = sat.ssps_from_r(r,T,dt,**kwargs)
 
 		total = len(cov_instruments)*len(targets)
 		count = 1
@@ -339,7 +423,7 @@ class Coverages(collections.abc.Set):
 				#cov = isCovered(lons,lats,r,target,sat.attractor.R_mean,instr.coverage())
 				cov = instr.coverage(lons,lats,r,v,target,sat.attractor.R_mean)
 				sat_coverages.append(Coverage(cov,target,T,dt,sat.id))
-				print(f'target {target.x}° {target.y}°. {count} of {total}')
+				print(f'target {target.x:.2f}° {target.y:.2f}°. {count} of {total}')
 				count += 1
 
 		if f:
@@ -554,6 +638,13 @@ class Coverage(object):
 			elif switch == 0 and c != 0:
 				continue
 
+		if gap != 0:
+			resp_time += (gap+1)*gap/2
+			time_gap += gap*gap
+			if gap > max_gap:
+				max_gap = gap
+			gap = 0
+
 		return resp_time/N,time_gap/N,max_gap
 
 	
@@ -570,33 +661,23 @@ class Coverage(object):
 			return Coverage(list(new_cov),self.target,self.T,self.dt)
 		
 
-	def plot_lapida(self, **kwargs):
-		"""Grafico de lapidas. 
+	
+	def plot_tombstone(self, **kwargs):
+		"""Tombstone plot for coverage. 
 
-		Funcion escalon en los intervalos donde el objetivo es cubierto.
-		En esencia es la misma funcion step de pyplot. En caso que quiera ser 
+		Parameters
+		----------
+		**kwargs 
+			all parameters are passed on to `.step`.
 
-		Recibe: 
-			**kwargs: argumentos propios de la funcion matplotlib.pyplot.step
-			(para mas informacion recurrir a documentacion oficial de matplotlib
-			https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.pyplot.step.html)
-		Devuelve:
-			 
 		"""
 		
-		merged = self.merge()
-		x = np.array( [self.dt*i/3600 for i in range(len(merged))] ) 
-		y = np.array(merged)
+		x = np.array( [self.dt*i/3600 for i in range(len(self.cov))] ) 
+		y = np.array(self.cov)
 
 		fig = plt.figure()
 		plt.step(x,y,**kwargs)
 		plt.title(str(self.acumulado()))
 
 		return fig
-
-
-
-
-
-
-
+			
