@@ -254,7 +254,7 @@ class Sat(object):
 		return rr,vv
 
 
-	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
+	def ssps(self,T,dt=1.,method=propagation.cowell,lon_offset=0, **kwargs):
 		""" Get subsatellite points, T days of flight.
 
 		Parameters
@@ -277,18 +277,18 @@ class Sat(object):
 
 		kw = self._parse_kwargs(**kwargs)		
 		w = self.attractor.angular_velocity
-		lons,lats = self.Propagator.get_ssps(T,dt,w,method,**kw)
+		lons,lats = self.Propagator.get_ssps(T,dt,w,method,lon_offset,**kw)
 		
 		return lons,lats
 
 
-	def ssps_from_r(self,r,T,dt=1.,method=propagation.cowell,**kwargs):
+	def ssps_from_r(self,r,T,dt=1.,method=propagation.cowell,lon_offset=0,**kwargs):
 		"""Same as ssps but builds from rr
 		"""
 		
 		kw = self._parse_kwargs(**kwargs)
 		w = self.attractor.angular_velocity
-		lons,lats = self.Propagator.get_ssps_from_rr(T,dt,w,r,method,**kw)
+		lons,lats = self.Propagator.get_ssps_from_rr(T,dt,w,r,method,lon_offset,**kw)
 
 		return lons,lats
 	
@@ -571,10 +571,8 @@ class Propagator(object):
 		return ephemerides.rv(tofs)
 	
 
-	def get_ssps_from_rr(self, T, dt, w, rr , method=propagation.cowell,**kwargs):
+	def get_ssps_from_rr(self, T, dt, w, rr , method=propagation.cowell, lon_offset=0, **kwargs):
 		"""Return subsatellite points"""
-
-		
 		
 		flag = False		
 		if kwargs != self.kwargs:
@@ -595,13 +593,13 @@ class Propagator(object):
 		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/dt))
 		
 		#de-rotation
-		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
+		lons = np.array([((lon*u.rad)-(t*w)+lon_offset).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
 		lats = lats*u.rad
 
 		return lons,lats
 
 
-	def get_ssps(self,T,dt,w,method=propagation.cowell,**kwargs):
+	def get_ssps(self,T,dt,w,method=propagation.cowell,lon_offset=0,**kwargs):
 		"""Return subsatellite points"""
 
 		flag = False		
@@ -626,7 +624,7 @@ class Propagator(object):
 		tofs = np.linspace(0,self.T*24*3600*u.s,num=int(self.T*24*3600/dt))
 		
 		#de-rotation
-		lons = np.array([((lon*u.rad)-(t*w)).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
+		lons = np.array([((lon*u.rad)-(t*w)+lon_offset).value%(2*np.pi) for lon,t in zip(lons,tofs)])*u.rad
 		lats = lats*u.rad
 
 

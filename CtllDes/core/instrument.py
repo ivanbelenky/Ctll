@@ -58,10 +58,42 @@ class Camera(Instrument):
 		self.f_l = f_l
 		self.s_w = s_w
 		
-		self.FOV = 2*np.arctan(self.s_w/2/self.f_l)*u.rad 
+		self.FOV = np.arctan(self.s_w/2/self.f_l)*u.rad 
 			
 	def coverage(self,lons,lats,r,v,target,R):
 		return symmetric(self.FOV,lons,lats,r,v,target,R)
+
+
+class RollCamera(Instrument):
+	def __init__(self, f_l, s_w, roll_angle):
+		"""Constructor for RollCamera.
+
+		Parameters
+		----------
+		f_l : ~astropy.units.quantity.Quantity
+		    focal length
+		s_W : ~astropy.units.quantity.Quantity
+		    sensor width
+		roll_angle : ~astropy.units.quantity.Quantity
+		    maximum rolling angle
+		"""
+
+		super().__init__()
+		self.f_l = f_l
+		self.s_w = s_w 
+		self.FOV = np.arctan(self.s_w/2/self.f_l)
+		self.roll = roll_angle.to(u.rad)
+        
+	def coverage(self, lons, lats, r, v, target, R):
+		return symmetric_with_roll(self.FOV,
+									lons,
+									lats,
+									r,
+									v,
+									target,
+									R,
+									roll_angle = self.roll)
+
 
 
 

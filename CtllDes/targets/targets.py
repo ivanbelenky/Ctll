@@ -64,6 +64,14 @@ class Targets(collections.abc.Set):
 		lst = np.array([[target.x,target.y] for target in self.targets])
 		return lst
 	
+	@property
+	def lons(self):
+		return [t.lon for t in self.targets]
+
+	@property	
+	def lats(self):
+		return [t.lat for t in self.targets]
+
 
 	@classmethod
 	def from_country(cls,country,N=50):
