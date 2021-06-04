@@ -290,7 +290,6 @@ class Coverages(collections.abc.Set):
 		return self._sats_id
 	
 
-
 	def __iter__(self):
 		return iter(self.covs)
 
@@ -303,7 +302,27 @@ class Coverages(collections.abc.Set):
 	def __str__(self):
 		return self.tag
 
-	#TODO: how to create dataframes in python.
+
+	def filter_by_sun_angle(self, thresh):
+		"""Return new Coverages with 
+
+		Parameters
+		----------
+		threshold : float
+			maximum sun angle to filter
+
+		
+		Returns
+		-------
+		cov : ~CtllDes.requests.coverage.Coverages
+			New Coverages object filtered by sun angle
+
+		"""
+
+		return Coverages([cov.filter_by_sun_angle(thresh) for cov in self.covs],
+		 tag=self._tag)
+
+
 	def to_df(self):		
 		"""Returns dataframe with all the merit figures
 		form the Coverage contained.
@@ -319,7 +338,8 @@ class Coverages(collections.abc.Set):
 									'mean gap dark',
 									'response time',
 									'average time gap',
-                          			'max gap'])
+                          			'max gap',
+                          			'sun angle'])
 
 		data = [{'T': cov.T,
 				'dt': cov.dt,
@@ -330,7 +350,8 @@ class Coverages(collections.abc.Set):
        			'mean gap dark': cov.mean_gap_dark,
         		'response time': cov.response_time,
         		'average time gap': cov.avg_time_gap,
-        		'max gap': cov.max_gap} for cov in self.covs]
+        		'max gap': cov.max_gap,
+        		'sun angle': cov.sun_angles} for cov in self.covs]
 
 		df = df.append(data,ignore_index=True)
 
@@ -338,7 +359,7 @@ class Coverages(collections.abc.Set):
 		
 
 	@classmethod
-	def from_ctll(cls,ctll,targets,T,dt=1.,**kwargs):
+	def from_ctll(cls,ctll,targets,T,dt=1.,r_sun=None, lon_offset=0, verbose=False, **kwargs):
 		"""Get coverages from constellation.
 		
 		Parameters
@@ -351,20 +372,25 @@ class Coverages(collections.abc.Set):
 			Desired time of coverage in days
 		dt : float | int, optional
 			time of sampling in seconds
-
+		r_sun : ~astropy.units.quantity.Quantity
+			sun position vector, must coincide with T and dt
+		lon_offset : ~astropy.units.quantity.Quantity
+			longitude offset
+		verbose : boolean
+			Print progress
 		Returns
 		-------
 		Coverages object containing only the coverage from
 		instruments that have _coverage function implemented.
 		
-		TODO: provide duck typing or not for instruments in ctll?
 		"""
 
 		ctll_covs = []
 		for sat in ctll.sats:
-			print(f'Satellite {ctll.sats.index(sat)+1} of {ctll.N}')
+			if verbose:
+				print(f'Satellite {ctll.sats.index(sat)+1} of {ctll.N}')
 			try:
-				sat_covs = Coverages.from_sat(sat,targets,T,dt,f=True,**kwargs)
+				sat_covs = Coverages.from_sat(sat,targets,T,dt,r_sun=r_sun, lon_offset=lon_offset, f=True,verbose=verbose, **kwargs)
 			except Exception as e:
 				print(e)
 				pass
@@ -378,7 +404,7 @@ class Coverages(collections.abc.Set):
 
 
 	@classmethod
-	def from_sat(cls,sat, targets,T, dt=1.,f=False,**kwargs):
+	def from_sat(cls,sat, targets,T, dt=1., r_sun=None, lon_offset=0, f=False, verbose=False, **kwargs):
 		"""Build list of coverage objects from satellite
 	
 		Parameters
@@ -391,6 +417,12 @@ class Coverages(collections.abc.Set):
 			Desired Time of analysis in days.
 		dt : float | int, optional
 			time of sampling in seconds
+		r_sun : ~astropy.units.quantity.Quantity
+			sun position vector, must coincide with T and dt
+		lon_offset : ~astropy.units.quantity.Quantity
+			longitude offset
+		verbose : boolean
+			Print progress
 		f :  boolean
 			Not to be modfied from default state
 		Returns
@@ -412,11 +444,15 @@ class Coverages(collections.abc.Set):
 		if not len(cov_instruments):
 			raise Exception("No coverage instruments found on" +
 				f" satID : {sat.id}")	
-
-		#TODO lons,lats from rrs,T,dt
 		
 		r,v = sat.rv(T,dt,**kwargs)
-		lons,lats = sat.ssps_from_r(r,T,dt,**kwargs)
+		lons,lats = sat.ssps_from_r(r,T,dt,lon_offset=lon_offset, **kwargs)
+		
+		if r_sun != None:
+			dot = np.einsum('ij,ij->i',r.value,r_sun.value)
+			norm_r = np.linalg.norm(r.value ,axis=1)
+			norm_r_sun = np.linalg.norm(r_sun.value, axis=1)
+			angles = np.arccos(dot/(norm_r*norm_r_sun))*u.rad
 
 		total = len(cov_instruments)*len(targets)
 		count = 1
@@ -426,7 +462,10 @@ class Coverages(collections.abc.Set):
 			for target in targets:
 				#cov = isCovered(lons,lats,r,target,sat.attractor.R_mean,instr.coverage())
 				cov = instr.coverage(lons,lats,r,v,target,sat.attractor.R_mean)
-				sat_coverages.append(Coverage(cov,target,T,dt,sat.id))
+				if r_sun != None:
+					sat_coverages.append(Coverage(cov,target,T,dt,sat.id,angles))
+				else:
+					sat_coverages.append(Coverage(cov,target,T,dt,sat.id))
 				print(f'target {target.x:.2f}° {target.y:.2f}°. {count} of {total}')
 				count += 1
 
@@ -459,7 +498,6 @@ class Coverages(collections.abc.Set):
 		for sats in sat_tgt:
 			cov = sats[0]
 			newcov = np.max(np.array([sat.cov for sat in sats]),axis=0)
-			print(newcov)
 			Covs.append(Coverage(newcov,cov.target,cov.T,cov.dt))
 
 		return Coverages(Covs,tag=f'collapsed satellites: {lst}')
@@ -480,7 +518,8 @@ class Coverage(object):
 		target,
 		T,
 		dt,
-		sat_id=None,
+		sat_id = None,
+		sun_angles = None
 	):
 		"""Constructor for Coverage
 		
@@ -504,6 +543,7 @@ class Coverage(object):
 		self._sat_id = sat_id if sat_id else ''
 		self._T = T
 		self._dt = dt
+		self._sun_angles = sun_angles if sun_angles else None
 
 		self._set_merit_figures()
 
@@ -530,6 +570,10 @@ class Coverage(object):
 	def dt(self):
 		return self._dt
 	
+	@property
+	def sun_angles(self):
+		return self._sun_angles
+
 		
 	def _set_merit_figures(self):
 		self._accumulated = self._accum()
@@ -541,6 +585,34 @@ class Coverage(object):
 		self._response_time = resp
 		self._avg_time_gap = avg
 		self._max_gap = max_gap
+
+
+	def filter_by_sun_angle(self, threshold):
+		"""Return new Coverage with 
+
+		Parameters
+		----------
+		threshold : float
+			maximum sun angle to filter
+
+		
+		Returns
+		-------
+		cov : ~CtllDes.requests.coverage.Coverage
+			New Coverage object filtered by sun angle
+
+		"""
+
+		new_cov = [val if (self.sun_angles[i].to(u.rad).value < threshold) else 0 
+		for i,val in enumerate(self.cov)]
+		return Coverage(new_cov,
+		 					self.target,
+		 					self.T,
+		 					self.dt,
+		 					sat_id = self.sat_id,
+		 					sun_angles=self.sun_angles)
+
+
 
 	@property
 	def accumulated(self):
@@ -648,6 +720,7 @@ class Coverage(object):
 			if gap > max_gap:
 				max_gap = gap
 			gap = 0
+
 
 		return resp_time/N,time_gap/N,max_gap
 

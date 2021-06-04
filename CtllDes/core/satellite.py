@@ -161,6 +161,30 @@ class Sat(object):
 		covInstr = [instr for instr in self.instruments
 		if 'coverage' in set(dir(instr))]
 		return covInstr
+
+	@property
+	def a(self):
+		return self.orbit.a
+
+	@property
+	def ecc(self):
+		return self.orbit.ecc
+	
+	@property
+	def inc(self):
+		return self.orbit.inc
+		
+	@property
+	def raan(self):
+		return self.orbit.raan
+	
+	@property
+	def argp(self):
+		return self.orbit.argp
+
+	@property
+	def nu(self):
+		return self.orbit.nu
 	
 	
 	
