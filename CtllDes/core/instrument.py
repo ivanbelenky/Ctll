@@ -107,9 +107,48 @@ class GodInstrument(Instrument):
 
 
 class PushBroom(Instrument):
-	def __init__(self,FOV):
+	""" Constructor for PushBroom.
+
+	Parameters
+	----------
+	f_l : ~astropy.units.quantity.Quantity
+	    focal length
+	s_W : ~astropy.units.quantity.Quantity
+	    sensor width
+	"""
+	
+	def __init__(self, fl, sw):
 		super().__init__()
-		self.FOV = FOV
+		self.f_l = fl
+		self.s_w = sw 
+		self.FOV = np.arctan(self.s_w/2/self.f_l)
 
 	def coverage(self, lons, lats, r, v, target, R):
 		return push_broom(self.FOV, lons, lats, r, target, R)
+
+
+class RollPushBroom(Instrument):
+	""" Constructor for PushBroom.
+
+	Parameters
+	----------
+	f_l : ~astropy.units.quantity.Quantity
+	    focal length
+	s_W : ~astropy.units.quantity.Quantity
+	    sensor width
+	roll_angle : ~astropy.units.quantity.Quantity
+	    maximum rolling angle
+	"""
+	
+	def __init__(self, fl, sw, roll_angle):
+		super().__init__()
+		self.f_l = fl
+		self.s_w = sw
+		self.roll_angle = roll_angle 
+		self.FOV = np.arctan(self.s_w/2/self.f_l)
+
+	def coverage(self, lons, lats, r, v, target, R):
+		return push_broom(self.FOV + self.roll_angle, lons, lats, r, target, R)
+
+
+

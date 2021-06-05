@@ -2,7 +2,7 @@ from ..core import ctll, satellite, instrument
 from ..targets.targets import Target
 from ..utils import trigsf
 
-
+from itertools import groupby
 
 import collections.abc
 from collections.abc import Iterable
@@ -466,8 +466,10 @@ class Coverages(collections.abc.Set):
 					sat_coverages.append(Coverage(cov,target,T,dt,sat.id,angles))
 				else:
 					sat_coverages.append(Coverage(cov,target,T,dt,sat.id))
-				print(f'target {target.x:.2f}° {target.y:.2f}°. {count} of {total}')
-				count += 1
+				
+				if verbose:
+					print(f'target {target.x:.2f}° {target.y:.2f}°. {count} of {total}')			
+					count += 1
 
 		if f:
 			return sat_coverages
@@ -544,6 +546,7 @@ class Coverage(object):
 		self._T = T
 		self._dt = dt
 		self._sun_angles = sun_angles if sun_angles else None
+		self._cov_rle = np.array([[k, sum(1 for i in g)] for k,g in groupby(self.cov)])
 
 		self._set_merit_figures()
 
@@ -552,6 +555,11 @@ class Coverage(object):
 	@property
 	def cov(self):
 		return self._cov
+
+	@property
+	def cov_rle(self):
+		return self._cov_rle
+	
 
 	@property
 	def sat_id(self):
@@ -663,26 +671,33 @@ class Coverage(object):
 	def _mean_gap(self,view):
 		"""Returns the mean gap in view."""
 
-		gap = 0 
-		switch = 0 
-		c_gap = 0
 		
-		for c in self.cov:
-			if switch == 0 and c == view:
-				switch = 1
-				c_gap += 1
-				gap += 1
-			elif switch == 1 and c != view:
-				switch = 0
-			elif switch == 1 and c == view:
-				gap += 1
-			elif switch == 0 and c != view:
-				continue
-
-		if c_gap == 0:
-			return 0
+		gap_distr = [s[1] for s in self.cov_rle if s[0] == view]
+		if len(gap_distr) != 0:
+			return sum(gap_distr)/len(gap_distr)
 		else:
-			return gap/c_gap	
+			return 0.
+
+		# gap = 0 
+		# switch = 0 
+		# c_gap = 0
+		
+		# for c in self.cov:
+		# 	if switch == 0 and c == view:
+		# 		switch = 1
+		# 		c_gap += 1
+		# 		gap += 1
+		# 	elif switch == 1 and c != view:
+		# 		switch = 0
+		# 	elif switch == 1 and c == view:
+		# 		gap += 1
+		# 	elif switch == 0 and c != view:
+		# 		continue
+
+		# if c_gap == 0:
+		# 	return 0
+		# else:
+		# 	return gap/c_gap	
 
 	
 	
@@ -690,36 +705,43 @@ class Coverage(object):
 		"""Returns response time, average time gap, 
 		and max gap in seconds"""
 		
-		idx = []
-		resp_time = 0
-		time_gap = 0
-		gap = 0
-		switch = 0
-		max_gap = 0
+		dark_gaps = [s[1] for s in self.cov_rle if s[0] == 0]
+
+		max_gap = max(dark_gaps)
+		time_gap = sum([dg**2 for dg in dark_gaps])
+		resp_time = sum([(dg+1)*dg/2 for dg in dark_gaps])
 		N = len(self.cov)
 
-		for c in self.cov:
-			if switch == 0 and c == 0:
-				switch = 1
-				gap += 1
-			elif switch == 1 and c != 0:
-				switch = 0
-				resp_time += (gap+1)*gap/2
-				time_gap += gap*gap
-				if gap > max_gap:
-					max_gap = gap
-				gap = 0
-			elif switch == 1 and c == 0:
-				gap += 1
-			elif switch == 0 and c != 0:
-				continue
 
-		if gap != 0:
-			resp_time += (gap+1)*gap/2
-			time_gap += gap*gap
-			if gap > max_gap:
-				max_gap = gap
-			gap = 0
+		# idx = []
+		# resp_time = 0
+		# time_gap = 0
+		# gap = 0
+		# switch = 0
+		# max_gap = 0
+
+		# for c in self.cov:
+		# 	if switch == 0 and c == 0:
+		# 		switch = 1
+		# 		gap += 1
+		# 	elif switch == 1 and c != 0:
+		# 		switch = 0
+		# 		resp_time += (gap+1)*gap/2
+		# 		time_gap += gap*gap
+		# 		if gap > max_gap:
+		# 			max_gap = gap
+		# 		gap = 0
+		# 	elif switch == 1 and c == 0:
+		# 		gap += 1
+		# 	elif switch == 0 and c != 0:
+		# 		continue
+
+		# if gap != 0:
+		# 	resp_time += (gap+1)*gap/2
+		# 	time_gap += gap*gap
+		# 	if gap > max_gap:
+		# 		max_gap = gap
+		# 	gap = 0
 
 
 		return resp_time/N,time_gap/N,max_gap
