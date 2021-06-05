@@ -478,7 +478,7 @@ class Coverages(collections.abc.Set):
 
 
 
-	def collapse_sats(self,id_lst=None):
+	def collapse_sats(self, id_lst=None):
 		""" Collapse Coverages object and create new one from specified
 		satellites. If non specified, it will colapse all sats.
 		
