@@ -278,7 +278,7 @@ class Sat(object):
 		return rr,vv
 
 
-	def ssps(self,T,dt=1.,method=propagation.cowell,lon_offset=0, **kwargs):
+	def ssps(self,T,dt=1.,method=propagation.cowell, lon_offset=0, **kwargs):
 		""" Get subsatellite points, T days of flight.
 
 		Parameters

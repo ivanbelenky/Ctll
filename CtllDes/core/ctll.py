@@ -364,7 +364,7 @@ class Ctll(object):
 		if sat.status is SAT_ST["On"]]	
 		return rrvv
 
-	def ssps(self,T,dt=1.,method=propagation.cowell,**kwargs):
+	def ssps(self,T,dt=1.,method=propagation.cowell, lon_offset = 0, **kwargs):
 		""" Get subsatellite points for online Satellites,
 		T days of flight.
 
@@ -383,7 +383,7 @@ class Ctll(object):
 		
 		"""
 
-		sspss = [sat.ssps(T,dt,method,**kwargs) for sat in self.sats
+		sspss = [sat.ssps(T,dt,method,lon_offset=lon_offset,**kwargs) for sat in self.sats
 		if sat.status is SAT_ST["On"]]	
 		
 		return sspss

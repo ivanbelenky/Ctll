@@ -10,7 +10,7 @@ from ..utils import trigsf
 
 
 
-def default_comm_data(sat, target, T, dt=1., **kwargs):
+def default_comm_data(sat, target, T, dt=1., lon_offset=0, **kwargs):
 	"""Useful information for coverage data. That is
 	positions, velocities, latitudes and longitudes, elevations,
 	and times of view of the target. Just the covered data is displayed.
@@ -30,7 +30,7 @@ def default_comm_data(sat, target, T, dt=1., **kwargs):
 	"""
 
 	r,v = sat.rv(T,dt,**kwargs)
-	lons,lats = sat.ssps(T,dt,**kwargs)
+	lons,lats = sat.ssps(T,dt,lon_offset=lon_offset,**kwargs)
 
 	view = coverage.get_view(lons, lats, r, target, sat.attractor.R_mean)
 	
@@ -73,6 +73,28 @@ def default_comm_data(sat, target, T, dt=1., **kwargs):
 
 
 
-	
+def time_over_mask(comm_df, mask, dt):
+	"""Returns time of communication considering mask as minimum elevation
+
+	Parameters
+	----------
+	comm_df : ~pandas.DataFrame
+		communication dataframe
+	mask : float
+		mask value, minimum eleveation angle
+	dt : float
+		time interval 
+	"""
+
+
+	if mask.unit == u.deg:
+		elevation = comm_df['elevation'].to_numpy(dtype=np.float64)
+	else:
+		elevation = comm_df['elevation'].to_numpy(dtype=np.float64)*180/np.pi
+
+	elevation_mask = [e for e in elevation if e > mask.value]
+	time_over = len(elevation_mask)*(dt)*3600 
+
+	return time_over
 
 
