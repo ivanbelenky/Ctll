@@ -1,5 +1,5 @@
 # Ctll
-Constellation Design (in development)
+Constellation Design 
 
 Usage: cloning source folder and notebooks folders would be enough to run the examples and play around a little bit. 
 
